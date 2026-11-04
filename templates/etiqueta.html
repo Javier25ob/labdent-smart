@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Etiqueta {{ codigo }}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+  <link href="{{ url_for('static', filename='style.css') }}" rel="stylesheet">
+</head>
+<body>
+<div class="etq">
+  <div id="qr"></div>
+  <div class="info">
+    <b>{{ lab_nombre }}</b><br>
+    <span class="codigo">{{ codigo }}</span><br>
+    {{ o.servicio }}<br>
+    {{ o.odontologo }}<br>
+    Entrega: {{ o.fecha_entrega_estimada }}<br>
+    <small>Escanea y sigue tu trabajo</small>
+  </div>
+</div>
+<p class="no-print" style="text-align:center"><button onclick="print()" style="padding:10px 22px;border-radius:12px;border:0;background:#0fb5a6;font-weight:700">Imprimir</button></p>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>new QRCode(document.getElementById('qr'), {text: {{ url | tojson }}, width: 120, height: 120, colorDark: '#0a1d33'});</script>
+</body>
+</html>

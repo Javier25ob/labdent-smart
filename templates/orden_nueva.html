@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block titulo %}Nueva orden{% endblock %}
+{% block subtitulo %}Llena estos datos y listo: se crea con su código QR{% endblock %}
+{% block contenido %}
+{% if not odontologos or not servicios %}
+<div class="card"><div class="vacio"><i class="bi bi-info-circle ico-big"></i><h5>Antes de crear una orden necesitas…</h5>
+  <p>{% if not odontologos %}Registrar al menos un <strong>odontólogo</strong>.{% endif %} {% if not servicios %}Crear al menos un <strong>servicio</strong>.{% endif %}</p>
+  <a class="btn btn-primary" href="/catalogos/?tab={{ 'odontologos' if not odontologos else 'servicios' }}">Ir a registrarlo</a></div></div>
+{% else %}
+<form method="post" class="card card-body" style="max-width:680px">
+  <div class="d-flex gap-3 mb-3"><div class="paso-num">1</div><div class="flex-grow-1">
+    <label class="form-label mb-1">¿Quién envía el trabajo?</label>
+    <select name="odontologo_id" id="od" class="form-select" required>{% for o in odontologos %}<option value="{{ o.id }}">{{ o.nombre }}{% if o.clinica %} — {{ o.clinica }}{% endif %}</option>{% endfor %}</select></div></div>
+  <div class="d-flex gap-3 mb-3"><div class="paso-num">2</div><div class="flex-grow-1">
+    <label class="form-label mb-1">¿Para qué paciente?</label>
+    <select name="paciente_id" id="pa" class="form-select" required></select>
+    <input name="paciente_nuevo" id="pn" class="form-control mt-2 d-none" placeholder="Nombre completo del paciente nuevo"></div></div>
+  <div class="d-flex gap-3 mb-3"><div class="paso-num">3</div><div class="flex-grow-1">
+    <label class="form-label mb-1">¿Qué trabajo es?</label>
+    <select name="servicio_id" class="form-select" required>{% for s in servicios %}<option value="{{ s.id }}">{{ s.nombre }} · {{ s.dias_estimados }} días</option>{% endfor %}</select>
+    <div class="form-text">La fecha de entrega se calcula sola con los días del servicio.</div></div></div>
+  <div class="d-flex gap-3 mb-4"><div class="paso-num">4</div><div class="flex-grow-1">
+    <label class="form-label mb-1">Indicaciones (opcional)</label>
+    <textarea name="observaciones" class="form-control" rows="3" placeholder="Color, diente, detalles que pidió el odontólogo…"></textarea></div></div>
+  <button class="btn btn-primary btn-lg"><i class="bi bi-check2-circle"></i> Crear orden</button>
+</form>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+{% if odontologos and servicios %}
+<script>
+const pacientes = {{ pacientes | map(attribute='id') | list | tojson }}.map((id,i)=>({id,
+  nombre:{{ pacientes | map(attribute='nombre') | list | tojson }}[i], od:{{ pacientes | map(attribute='odontologo_id') | list | tojson }}[i]}));
+const od=document.getElementById('od'), pa=document.getElementById('pa'), pn=document.getElementById('pn');
+function pintar(){
+  const lista=pacientes.filter(p=>p.od==od.value);
+  pa.innerHTML=lista.map(p=>`<option value="${p.id}">${p.nombre}</option>`).join('')+'<option value="nuevo">➕ Paciente nuevo…</option>';
+  mostrar();
+}
+function mostrar(){const n=pa.value==='nuevo';pn.classList.toggle('d-none',!n);pn.required=n;}
+od.onchange=pintar; pa.onchange=mostrar; pintar();
+</script>
+{% endif %}
+{% endblock %}

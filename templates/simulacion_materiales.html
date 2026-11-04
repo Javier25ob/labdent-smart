@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block titulo %}Simulación de compras{% endblock %}
+{% block subtitulo %}Descubre cuánto material comprar si tu trabajo sube o baja{% endblock %}
+{% block contenido %}
+<div class="nav-tabs-pro"><a href="/simulacion"><i class="bi bi-diagram-3"></i> Flujo de producción</a><a class="on" href="/simulacion/materiales"><i class="bi bi-boxes"></i> Compra de materiales</a></div>
+{% if not filas %}
+<div class="card"><div class="vacio"><i class="bi bi-graph-up-arrow ico-big"></i><h5>Aún no hay materiales para simular</h5><p>Registra tus materiales y empieza a producir órdenes: el sistema aprende de tu consumo real.</p><a class="btn btn-primary" href="/inventario/">Ir al inventario</a></div></div>
+{% else %}
+<div class="ayuda-box"><i class="bi bi-lightbulb"></i> Mueve la barra: <strong>100%</strong> = tu ritmo normal, <strong>150%</strong> = 50% más trabajo. Te decimos qué comprar y cuánto costaría.</div>
+<form method="post" class="card card-body mb-4">
+  <div class="row g-3 align-items-end">
+    <div class="col-md-5"><label class="form-label">Demanda: <strong>{{ factor }}%</strong> de la normal</label>
+      <input type="range" name="factor" min="50" max="200" step="10" value="{{ factor }}" class="form-range" oninput="this.previousElementSibling.querySelector('strong').textContent=this.value+'%'"></div>
+    <div class="col-md-4"><label class="form-label">Horizonte (días)</label>
+      <input type="number" name="horizonte" min="7" max="180" value="{{ horizonte }}" class="form-control"></div>
+    <div class="col-md-3"><button class="btn btn-primary w-100">Simular</button></div>
+  </div>
+</form>
+
+<h5>Resultado del escenario ({{ horizonte }} días)</h5>
+<div class="tabla-card table-responsive">
+<table class="table mb-0">
+  <thead><tr><th>Material</th><th>Necesario</th><th>Stock final</th><th>Comprar</th><th>Costo</th></tr></thead>
+  <tbody>{% for f in filas %}
+    <tr class="{{ 'table-danger' if f.se_agota else '' }}">
+      <td>{{ f.material.nombre }}</td><td>{{ f.necesario }} {{ f.material.unidad }}</td>
+      <td>{{ f.stock_final }}</td><td>{{ f.compra }}</td><td>{{ f.costo|pesos }}</td>
+    </tr>{% endfor %}
+  </tbody>
+</table>
+</div>
+<p class="mt-3 fs-5"><strong>Inversión total sugerida: {{ total|pesos }}</strong></p>
+
+<h5 class="mt-4">Predicción de consumo (hoy)</h5>
+<div class="tabla-card table-responsive">
+<table class="table table-sm mb-0">
+  <thead><tr><th>Material</th><th>Consumo/día</th><th>Días restantes</th><th>Compra sugerida (15 días)</th></tr></thead>
+  <tbody>{% for p in prediccion %}
+    <tr><td>{{ p.material.nombre }}</td><td>{{ p.consumo_diario }}</td>
+        <td>{{ p.dias_restantes if p.dias_restantes is not none else '—' }}</td><td>{{ p.comprar }}</td></tr>{% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}
+{% endblock %}

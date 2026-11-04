@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block titulo %}Panel de control{% endblock %}
+{% block subtitulo %}Así va tu laboratorio hoy{% endblock %}
+{% block acciones %}<a class="btn btn-primary" href="/ordenes/nueva"><i class="bi bi-plus-lg"></i> Nueva orden</a>{% endblock %}
+{% block contenido %}
+{% if pasos|rejectattr(3)|list %}
+<div class="onb">
+  <h5><i class="bi bi-rocket-takeoff text-success"></i> Primeros pasos</h5>
+  <p class="sub">Tu laboratorio está vacío: tú ingresas tus propios datos. Sigue estos {{ pasos|length }} pasos en orden, tardas pocos minutos.</p>
+  <div class="row g-3">
+    {% for titulo, desc, url, hecho in pasos %}
+    <div class="col-md-6 col-xl"><a class="onb-step {{ 'hecho' if hecho }}" href="{{ url }}">
+      <div class="n">{% if hecho %}<i class="bi bi-check-lg"></i>{% else %}{{ loop.index }}{% endif %}</div>
+      <div><strong>{{ titulo }}</strong><span class="d">{{ desc }}</span></div></a></div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<div class="row g-3 mb-3">
+  <div class="col-lg-4">
+    <div class="pulso">
+      <div class="t">Pulso del laboratorio <i class="bi bi-info-circle" title="Puntaje de 0 a 100 según atrasos, materiales en alerta y entregas a tiempo"></i></div>
+      {% set circ = 2 * 3.14159 * 70 %}
+      <div class="ring {{ 'beat' if pulso.score is not none }}">
+        <svg width="170" height="170" viewBox="0 0 170 170">
+          <circle cx="85" cy="85" r="70" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="14"/>
+          {% if pulso.score is not none %}<circle cx="85" cy="85" r="70" fill="none" stroke="{{ pulso.color }}" stroke-width="14" stroke-linecap="round"
+                  stroke-dasharray="{{ circ }}" stroke-dashoffset="{{ circ * (1 - pulso.score / 100) }}"/>{% endif %}
+        </svg>
+        <div class="num"><b>{{ pulso.score if pulso.score is not none else '—' }}</b><span>de 100</span></div>
+      </div>
+      <div class="nivel" style="color:{{ pulso.color }}">{{ pulso.nivel }}</div>
+      <div class="msg">{{ pulso.mensaje }}</div>
+      {% for nombre, valor, pen in pulso.factores %}
+        <div class="fac"><span>{{ nombre }}: {{ valor }}</span>{% if pen %}<em>−{{ '%g'|format(pen) }}</em>{% else %}<span>✓</span>{% endif %}</div>
+      {% endfor %}
+    </div>
+  </div>
+  <div class="col-lg-8">
+    <div class="row g-3">
+      <div class="col-6"><div class="card kpi"><div class="card-body"><div class="ico ico-blue"><i class="bi bi-clipboard2-data"></i></div><div><small>Órdenes registradas</small><h3>{{ kpi.total_ordenes }}</h3></div></div></div></div>
+      <div class="col-6"><div class="card kpi"><div class="card-body"><div class="ico ico-red"><i class="bi bi-alarm"></i></div><div><small>Atrasadas</small><h3 class="text-danger">{{ kpi.atrasadas }}</h3></div></div></div></div>
+      <div class="col-6"><div class="card kpi"><div class="card-body"><div class="ico ico-teal"><i class="bi bi-patch-check"></i></div><div><small>Entregas a tiempo</small><h3>{{ kpi.cumplimiento if kpi.cumplimiento is not none else '—' }}{% if kpi.cumplimiento is not none %}%{% endif %}</h3></div></div></div></div>
+      <div class="col-6"><div class="card kpi"><div class="card-body"><div class="ico ico-amber"><i class="bi bi-exclamation-triangle"></i></div><div><small>Materiales por reponer</small><h3>{{ kpi.materiales_alerta }}</h3></div></div></div></div>
+      <div class="col-12"><div class="card"><div class="card-body d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div><small class="text-muted fw-semibold text-uppercase">Ingresos (órdenes entregadas)</small><div class="fs-3 fw-bold">{{ kpi.ingresos|pesos }}</div></div>
+        <a href="/simulacion/materiales" class="btn btn-outline-primary"><i class="bi bi-graph-up-arrow"></i> ¿Cuánto debo comprar?</a>
+      </div></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-lg-5"><div class="card h-100"><div class="card-header">Órdenes por estado</div>
+    <div class="card-body">
+      {% if hay_ordenes %}<canvas id="chEstados" height="230"></canvas>
+      {% else %}<div class="vacio"><i class="bi bi-pie-chart ico-big"></i><h5>Aún no hay órdenes</h5><p>Cuando crees una, verás aquí cómo se reparten.</p><a class="btn btn-primary btn-sm" href="/ordenes/nueva">Crear orden</a></div>{% endif %}
+    </div></div></div>
+  <div class="col-lg-7"><div class="card h-100"><div class="card-header">Órdenes que podrían atrasarse</div>
+    <div class="card-body pt-2">
+      {% for r in riesgo %}
+        <a class="riesgo-item" href="/ordenes/{{ r.id }}">
+          <span class="riesgo riesgo-{{ r.riesgo }}">{{ r.riesgo|capitalize }}</span>
+          <div class="flex-grow-1"><strong>#{{ r.id }} · {{ r.servicio }}</strong><div class="small text-muted">{{ r.odontologo }} — {{ r.riesgo_motivo }}</div></div>
+          <i class="bi bi-chevron-right text-muted"></i>
+        </a>
+      {% else %}<div class="vacio py-4"><i class="bi bi-check-circle ico-big text-success"></i><p class="mb-0">{{ 'Ninguna orden en riesgo. ¡Buen trabajo!' if hay_ordenes else 'El sistema te avisará aquí si una orden va a retrasarse.' }}</p></div>{% endfor %}
+    </div></div></div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-7"><div class="card h-100"><div class="card-header">Días que te dura cada material</div>
+    <div class="card-body">
+      {% if hay_materiales %}<canvas id="chStock" height="200"></canvas>
+      <p class="small text-muted mb-0 mt-2">Se calcula con lo que has consumido en los últimos 30 días. <span style="color:#e5484d">Rojo</span>: menos de 7 días.</p>
+      {% else %}<div class="vacio"><i class="bi bi-boxes ico-big"></i><h5>Sin materiales</h5><p>Registra tus materiales para ver cuánto te duran.</p><a class="btn btn-primary btn-sm" href="/inventario/">Ir al inventario</a></div>{% endif %}
+    </div></div></div>
+  <div class="col-lg-5"><div class="card h-100"><div class="card-header">Qué te recomienda el sistema</div>
+    <div class="card-body">{% for nivel, texto in recomendaciones %}<div class="alert alert-{{ nivel }} py-2 mb-2">{{ texto }}</div>{% endfor %}</div></div></div>
+</div>
+{% endblock %}
+{% block scripts %}
+{% if hay_ordenes or hay_materiales %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+Chart.defaults.font.family = "'Plus Jakarta Sans', sans-serif";
+{% if hay_ordenes %}
+const estados = {{ ['Recibida','En producción','Terminada','Entregada'] | tojson }};
+const datos = {{ kpi.por_estado | tojson }};
+new Chart(document.getElementById('chEstados'), {type:'doughnut',
+  data:{labels:estados,datasets:[{data:estados.map(e=>datos[e]||0),backgroundColor:['#7b8ba0','#3b82f6','#f08a24','#17a673'],borderWidth:0}]},
+  options:{cutout:'68%',plugins:{legend:{position:'bottom',labels:{usePointStyle:true}}}}});
+{% endif %}
+{% if hay_materiales %}
+const pred = {{ prediccion | map(attribute='material') | map(attribute='nombre') | list | tojson }};
+const dias = {{ prediccion | map(attribute='dias_restantes') | list | tojson }};
+new Chart(document.getElementById('chStock'), {type:'bar',
+  data:{labels:pred,datasets:[{label:'Días restantes',data:dias.map(d=>d===null?0:d),
+    backgroundColor:dias.map(d=>d===null?'#cfd8e3':d<7?'#e5484d':d<15?'#f5a524':'#0fb5a6'),borderRadius:8}]},
+  options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{grid:{color:'#eef2f6'}},y:{grid:{display:false}}}}});
+{% endif %}
+</script>
+{% endif %}
+{% endblock %}

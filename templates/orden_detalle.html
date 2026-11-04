@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block titulo %}Orden #{{ o.id }} <span class="badge estado-{{ o.estado|replace(' ','_') }} fs-6 align-middle">{{ o.estado }}</span>{% endblock %}
+{% block subtitulo %}<span class="codigo">{{ codigo }}</span> &nbsp;<span class="riesgo riesgo-{{ riesgo }}">{{ riesgo_motivo }}</span>{% endblock %}
+{% block acciones %}<a class="btn btn-outline-dark" href="/ordenes/"><i class="bi bi-arrow-left"></i> Volver</a>{% endblock %}
+{% block contenido %}
+{% set estados = ['Recibida','En producción','Terminada','Entregada'] %}
+{% set actual = estados.index(o.estado) %}
+<div class="card mb-3"><div class="card-body">
+  <div class="steps">
+    <div class="fill-line" style="width:{{ actual * 28 }}%"></div>
+    {% for e in estados %}
+      <div class="step {{ 'done' if loop.index0 < actual else ('now' if loop.index0 == actual else '') }}">
+        <div class="dot"><i class="bi {{ 'bi-check-lg' if loop.index0 < actual else ['bi-inbox','bi-gear','bi-box-seam','bi-truck'][loop.index0] }}"></i></div>{{ e }}
+      </div>
+    {% endfor %}
+  </div>
+</div></div>
+
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card mb-3"><div class="card-body">
+      <div class="dato"><span>Odontólogo</span><strong>{{ o.odontologo }}</strong></div>
+      <div class="dato"><span>Paciente</span><strong>{{ o.paciente }}</strong></div>
+      <div class="dato"><span>Servicio</span><strong>{{ o.servicio }}</strong></div>
+      <div class="dato"><span>Ingreso</span><strong>{{ o.fecha_ingreso }}</strong></div>
+      <div class="dato"><span>Entrega estimada</span><strong>{{ o.fecha_entrega_estimada }}</strong></div>
+      {% if o.fecha_entrega_real %}<div class="dato"><span>Entregada</span><strong>{{ o.fecha_entrega_real }}</strong></div>{% endif %}
+      <div class="dato"><span>Observaciones</span><strong>{{ o.observaciones or '—' }}</strong></div>
+      {% if siguiente %}
+      <form method="post" action="/ordenes/{{ o.id }}/avanzar" class="mt-3">
+        <button class="btn btn-success w-100">Pasar a «{{ siguiente }}» <i class="bi bi-arrow-right"></i></button>
+      </form>{% endif %}
+    </div></div>
+    <div class="card"><div class="card-header">Materiales requeridos</div>
+      <ul class="list-group list-group-flush">
+        {% for m in materiales %}<li class="list-group-item d-flex justify-content-between">{{ m.nombre }}<span>{{ '%g'|format(m.cantidad) }} {{ m.unidad }} <small class="text-muted">(stock: {{ '%g'|format(m.stock) }})</small></span></li>
+        {% else %}<li class="list-group-item text-muted">Este servicio no tiene materiales configurados.</li>{% endfor %}
+      </ul>
+      <div class="card-footer small text-muted bg-transparent">Se descuentan automáticamente al pasar a «En producción».</div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card mb-3"><div class="card-body text-center">
+      <h5 class="mb-1"><i class="bi bi-qr-code-scan text-success"></i> Seguimiento para el odontólogo</h5>
+      <p class="text-muted small">Pega este QR en la caja del trabajo: la clínica verá el avance en vivo, sin llamarte.</p>
+      <div class="qrbox"><div id="qr"></div></div>
+      <div class="mt-2"><span class="codigo">{{ codigo }}</span></div>
+      <div class="d-flex gap-2 justify-content-center mt-3 flex-wrap">
+        <a class="btn btn-outline-primary btn-sm" target="_blank" href="/seguimiento/etiqueta/{{ o.id }}"><i class="bi bi-printer"></i> Imprimir etiqueta</a>
+        <a class="btn btn-outline-primary btn-sm" target="_blank" href="/seguimiento/{{ codigo }}"><i class="bi bi-box-arrow-up-right"></i> Ver portal</a>
+        <button class="btn btn-outline-primary btn-sm" onclick="navigator.clipboard.writeText('{{ url_publica }}');this.textContent='¡Copiado!'"><i class="bi bi-link-45deg"></i> Copiar enlace</button>
+      </div>
+    </div></div>
+    <div class="card"><div class="card-header">Historial</div>
+      <ul class="list-group list-group-flush">{% for h in historial %}<li class="list-group-item d-flex justify-content-between"><strong>{{ h.estado }}</strong><span class="text-muted small">{{ h.fecha }}</span></li>{% endfor %}</ul>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>new QRCode(document.getElementById('qr'), {text: {{ url_publica | tojson }}, width: 170, height: 170, colorDark: '#0a1d33'});</script>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block titulo %}Órdenes de trabajo{% endblock %}
+{% block subtitulo %}Cada trabajo que te llega de una clínica{% endblock %}
+{% block acciones %}<a class="btn btn-primary" href="/ordenes/nueva"><i class="bi bi-plus-lg"></i> Nueva orden</a>{% endblock %}
+{% block contenido %}
+<div class="mb-3 d-flex flex-wrap gap-2">
+  <a class="btn btn-sm {{ 'btn-dark' if not filtro else 'btn-outline-dark' }}" href="/ordenes/">Todas</a>
+  {% for e in estados %}<a class="btn btn-sm {{ 'btn-dark' if filtro == e else 'btn-outline-dark' }}" href="/ordenes/?estado={{ e }}">{{ e }}</a>{% endfor %}
+</div>
+{% if ordenes %}
+<div class="tabla-card table-responsive">
+<table class="table table-hover align-middle mb-0">
+  <thead><tr><th>#</th><th>Odontólogo</th><th>Paciente</th><th>Servicio</th><th>Estado</th><th title="Probabilidad de que se atrase">Riesgo</th><th>Entrega</th></tr></thead>
+  <tbody>
+  {% for o in ordenes %}
+    <tr onclick="location='/ordenes/{{ o.id }}'" style="cursor:pointer">
+      <td class="fw-bold">{{ o.id }}</td><td>{{ o.odontologo }}</td><td>{{ o.paciente }}</td><td>{{ o.servicio }}</td>
+      <td><span class="badge estado-{{ o.estado|replace(' ','_') }}">{{ o.estado }}</span></td>
+      <td><span class="riesgo riesgo-{{ o.riesgo }}" title="{{ o.riesgo_motivo }}">{{ o.riesgo|capitalize if o.riesgo != 'ok' else 'Cerrada' }}</span></td>
+      <td>{{ o.fecha_entrega_estimada }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<div class="card"><div class="vacio"><i class="bi bi-clipboard2 ico-big"></i><h5>{{ 'No hay órdenes en este estado' if filtro else 'Todavía no has creado órdenes' }}</h5>
+<p>Una orden es un trabajo que te encarga un odontólogo (por ejemplo, una corona).</p>
+<a class="btn btn-primary" href="/ordenes/nueva"><i class="bi bi-plus-lg"></i> Crear la primera orden</a></div></div>
+{% endif %}
+{% endblock %}

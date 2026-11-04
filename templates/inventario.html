@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block titulo %}Inventario{% endblock %}
+{% block subtitulo %}Tus materiales y cuánto te queda de cada uno{% endblock %}
+{% block contenido %}
+<div class="ayuda-box"><i class="bi bi-lightbulb"></i> Registra cada material una vez. Cuando compres más usa <strong>«Registrar compra»</strong>; cuando fabriques, el sistema <strong>descuenta solo</strong>. Te avisa cuando quede poco.</div>
+<div class="row g-3">
+  <div class="col-lg-8">
+    {% if materiales %}
+    <div class="tabla-card table-responsive">
+    <table class="table align-middle mb-0">
+      <thead><tr><th>Material</th><th>Tienes</th><th title="Avísame cuando baje de aquí">Mínimo</th><th>Costo</th><th>Estado</th><th></th></tr></thead>
+      <tbody>{% for m in materiales %}
+        <tr><td class="fw-semibold">{{ m.nombre }}</td><td>{{ '%g'|format(m.stock) }} {{ m.unidad }}</td><td>{{ '%g'|format(m.stock_minimo) }}</td>
+          <td>{{ m.costo_unitario|pesos }}</td>
+          <td>{% if m.stock <= m.stock_minimo %}<span class="riesgo riesgo-alto">Reponer</span>{% else %}<span class="riesgo riesgo-bajo">Suficiente</span>{% endif %}</td>
+          <td class="d-flex gap-2">
+            <button class="btn-del" title="Editar" data-bs-toggle="modal" data-bs-target="#editMaterial{{ m.id }}"><i class="bi bi-pencil"></i></button>
+            <form method="post" action="/inventario/material/{{ m.id }}/eliminar" onsubmit="return confirm('¿Eliminar {{ m.nombre }}?')"><button class="btn-del" title="Eliminar"><i class="bi bi-trash3"></i></button></form>
+          </td></tr>
+      {% endfor %}</tbody>
+    </table></div>
+
+    {% for m in materiales %}
+    <div class="modal fade" id="editMaterial{{ m.id }}" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+      <form method="post" action="/inventario/material/{{ m.id }}/editar">
+        <div class="modal-header"><h5 class="modal-title">Editar {{ m.nombre }}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body d-grid gap-2">
+          <input name="nombre" class="form-control" value="{{ m.nombre }}" required>
+          <select name="unidad" class="form-select">
+            {% for u, et in [('und','Unidades'),('g','Gramos'),('kg','Kilos'),('ml','Mililitros'),('l','Litros')] %}
+            <option value="{{ u }}" {{ 'selected' if m.unidad == u }}>{{ et }}</option>{% endfor %}
+          </select>
+          <div class="row g-2">
+            <div class="col-6"><label class="form-label mb-0">Avisar si baja de</label><input name="stock_minimo" type="number" min="0" step="any" class="form-control" value="{{ m.stock_minimo }}"></div>
+            <div class="col-6"><label class="form-label mb-0">Costo por unidad (pesos)</label><input name="costo" type="number" min="0" step="any" class="form-control" value="{{ '%g'|format(m.costo_unitario) }}"></div>
+          </div>
+          <div class="form-text">La cantidad en stock ({{ '%g'|format(m.stock) }} {{ m.unidad }}) se ajusta con «Registrar compra», no aquí, para no perder el historial de movimientos.</div>
+        </div>
+        <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary">Guardar cambios</button></div>
+      </form>
+    </div></div></div>
+    {% endfor %}
+    {% else %}
+    <div class="card"><div class="vacio"><i class="bi bi-boxes ico-big"></i><h5>Tu inventario está vacío</h5><p>Agrega tu primer material con el formulario de la derecha.</p></div></div>
+    {% endif %}
+
+    {% if movimientos %}
+    <h6 class="mt-4 mb-2">Últimos movimientos</h6>
+    <div class="card card-body py-1">{% for mv in movimientos %}
+      <div class="item-row small"><span class="badge {{ 'bg-success' if mv.tipo=='ENTRADA' else 'bg-secondary' }}">{{ 'Entró' if mv.tipo=='ENTRADA' else 'Salió' }}</span>
+      <div class="grow"><strong>{{ '%g'|format(mv.cantidad) }}</strong> de {{ mv.nombre }} <span class="text-muted">· {{ mv.nota }}</span></div><span class="text-muted">{{ mv.fecha[:16] }}</span></div>
+    {% endfor %}</div>{% endif %}
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card card-body mb-3"><h5>➕ Nuevo material</h5>
+      <form method="post" action="/inventario/material" class="d-grid gap-2">
+        <input name="nombre" class="form-control" placeholder="Nombre (ej. Yeso tipo IV)" required>
+        <select name="unidad" class="form-select"><option value="und">Unidades</option><option value="g">Gramos</option><option value="kg">Kilos</option><option value="ml">Mililitros</option><option value="l">Litros</option></select>
+        <div class="row g-2"><div class="col-6"><label class="form-label mb-0">Cuánto tienes hoy</label><input name="stock" type="number" min="0" step="any" class="form-control" value="0"></div>
+        <div class="col-6"><label class="form-label mb-0">Avisar si baja de</label><input name="stock_minimo" type="number" min="0" step="any" class="form-control" value="0"></div></div>
+        <label class="form-label mb-0">Costo por unidad (pesos)</label><input name="costo" type="number" min="0" step="any" class="form-control" placeholder="Ej. 35000">
+        <button class="btn btn-primary">Guardar material</button></form></div>
+    {% if materiales %}
+    <div class="card card-body"><h5>🛒 Registrar compra</h5>
+      <form method="post" action="/inventario/entrada" class="d-grid gap-2">
+        <select name="material_id" class="form-select">{% for m in materiales %}<option value="{{ m.id }}">{{ m.nombre }}</option>{% endfor %}</select>
+        <input name="cantidad" type="number" step="any" min="0.01" class="form-control" placeholder="¿Cuánto compraste?" required>
+        <input name="nota" class="form-control" placeholder="Nota (opcional)">
+        <button class="btn btn-outline-primary">Sumar al stock</button></form></div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

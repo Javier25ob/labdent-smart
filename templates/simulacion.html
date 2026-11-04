@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block titulo %}Simulación del flujo de producción{% endblock %}
+{% block subtitulo %}Compara dos configuraciones del laboratorio y descubre dónde se forma la cola{% endblock %}
+{% macro horas(h) %}{{ '%.1f'|format(h) }} h{% endmacro %}
+{% macro minutos(m) %}{{ '%.0f'|format(m) }} min{% endmacro %}
+{% block contenido %}
+<div class="nav-tabs-pro"><a class="on" href="/simulacion"><i class="bi bi-diagram-3"></i> Flujo de producción</a><a href="/simulacion/materiales"><i class="bi bi-boxes"></i> Compra de materiales</a></div>
+
+<div class="ayuda-box"><i class="bi bi-lightbulb"></i> Cada orden pasa por <strong>Diseño CAD → Fresado → Horno → Acabado</strong>. Si una estación no da abasto, las órdenes hacen fila.
+  Pon cuántas personas o máquinas tienes (<strong>Escenario A</strong>) y cuántas tendrías si invirtieras (<strong>Escenario B</strong>): la simulación te dice cuánto bajaría el tiempo de entrega.</div>
+
+<form method="get" class="card card-body mb-4">
+  <div class="table-responsive">
+  <table class="table table-sm align-middle mb-3">
+    <thead><tr><th>Estación</th><th style="width:170px">Tiempo por orden (min)</th><th style="width:150px">A · Actual (cantidad)</th><th style="width:150px">B · Propuesto (cantidad)</th></tr></thead>
+    <tbody>{% for k, nombre, _ in etapas %}
+      <tr><td class="fw-semibold">{{ nombre }}</td>
+        <td><input class="form-control form-control-sm" type="number" name="t_{{ k }}" min="{{ lim.servicio[0] }}" max="{{ lim.servicio[1] }}" value="{{ p.servicio[k] }}"></td>
+        <td><input class="form-control form-control-sm" type="number" name="a_{{ k }}" min="{{ lim.capacidad[0] }}" max="{{ lim.capacidad[1] }}" value="{{ cap_a[k] }}"></td>
+        <td><input class="form-control form-control-sm" type="number" name="b_{{ k }}" min="{{ lim.capacidad[0] }}" max="{{ lim.capacidad[1] }}" value="{{ cap_b[k] }}"></td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+  <div class="row g-3 align-items-end">
+    <div class="col-6 col-md-3"><label class="form-label mb-0">Órdenes que llegan por día</label><input class="form-control" type="number" name="llegadas" min="{{ lim.llegadas[0] }}" max="{{ lim.llegadas[1] }}" value="{{ p.llegadas }}"></div>
+    <div class="col-6 col-md-3"><label class="form-label mb-0">Días a simular</label><input class="form-control" type="number" name="dias" min="{{ lim.dias[0] }}" max="{{ lim.dias[1] }}" value="{{ p.dias }}"></div>
+    <div class="col-6 col-md-2"><label class="form-label mb-0">Repeticiones</label><input class="form-control" type="number" name="replicas" min="{{ lim.replicas[0] }}" max="{{ lim.replicas[1] }}" value="{{ p.replicas }}"></div>
+    <div class="col-6 col-md-2"><label class="form-label mb-0">Semilla</label><input class="form-control" type="number" name="semilla" min="{{ lim.semilla[0] }}" max="{{ lim.semilla[1] }}" value="{{ p.semilla }}"></div>
+    <div class="col-12 col-md-2"><button class="btn btn-primary w-100"><i class="bi bi-play-fill"></i> Simular</button></div>
+  </div>
+</form>
+
+{# ---------- Resumen ---------- #}
+<div class="row g-3 mb-4">
+  <div class="col-md-4"><div class="card kpi h-100"><div class="card-body"><div class="ico ico-amber"><i class="bi bi-hourglass-split"></i></div>
+    <div><small>A · Tiempo total por orden</small><h3>{{ horas(r.a.total_h) }}</h3><div class="small text-muted">± {{ '%.1f'|format(r.a.ic95_h) }} h · el 90% sale en menos de {{ horas(r.a.p90_h) }}</div></div></div></div></div>
+  <div class="col-md-4"><div class="card kpi h-100"><div class="card-body"><div class="ico ico-teal"><i class="bi bi-lightning-charge"></i></div>
+    <div><small>B · Tiempo total por orden</small><h3>{{ horas(r.b.total_h) }}</h3><div class="small text-muted">± {{ '%.1f'|format(r.b.ic95_h) }} h · el 90% sale en menos de {{ horas(r.b.p90_h) }}</div></div></div></div></div>
+  <div class="col-md-4"><div class="card kpi h-100"><div class="card-body"><div class="ico ico-blue"><i class="bi bi-graph-down-arrow"></i></div>
+    <div><small>Mejora de B frente a A</small>
+      <h3>{% if r.iguales %}—{% else %}{{ '%.0f'|format(r.reduccion) }}%{% endif %}</h3>
+      <div class="small text-muted">{% if r.iguales %}A y B son iguales: cambia alguna cantidad en B.{% elif r.reduccion >= 0 %}menos tiempo de entrega{% else %}B es peor que A{% endif %}</div></div></div></div></div>
+</div>
+
+{% if not r.a.estable %}
+<div class="alert alert-danger"><i class="bi bi-exclamation-triangle"></i> <strong>El escenario A no es sostenible:</strong> al menos una estación recibe más trabajo del que puede atender (utilización ≥ 100%), así que la fila crece sin parar mientras más días simules.</div>
+{% endif %}
+{% if not r.iguales and not r.b.estable %}
+<div class="alert alert-danger"><i class="bi bi-exclamation-triangle"></i> <strong>El escenario B no es sostenible:</strong> hay una estación con utilización ≥ 100%.</div>
+{% endif %}
+<div class="alert alert-info"><i class="bi bi-bullseye"></i> <strong>Cuello de botella del escenario A: {{ r.a.cuello.nombre }}</strong> — espera promedio de {{ minutos(r.a.cuello.espera_sim) }} en fila
+  (utilización {{ '%.0f'|format(r.a.cuello.rho_teorica * 100) }}%).
+  {% if not r.iguales %}En B el cuello pasa a ser <strong>{{ r.b.cuello.nombre }}</strong>.{% endif %}</div>
+
+{# ---------- Gráfico ---------- #}
+<div class="card card-body mb-4">
+  <h5 class="mb-3">Espera promedio en fila por estación (minutos)</h5>
+  <div style="position:relative;height:280px"><canvas id="chEsperas"></canvas></div>
+</div>
+
+{# ---------- Detalle por estación ---------- #}
+{% for nombre, esc in (('A · Actual', r.a), ('B · Propuesto', r.b)) %}{% if not (loop.last and r.iguales) %}
+<h5 class="mt-4">Escenario {{ nombre }}</h5>
+<div class="tabla-card table-responsive mb-3">
+<table class="table table-sm mb-0">
+  <thead><tr><th>Estación</th><th>Cantidad</th><th>Ocupación</th><th>Espera simulada</th><th>Espera teórica</th><th>Órdenes en fila (prom.)</th></tr></thead>
+  <tbody>{% for e in esc.etapas %}
+    <tr class="{{ 'table-danger' if e.rho_teorica >= 1 else ('table-warning' if e.rho_teorica >= 0.85 else '') }}">
+      <td class="fw-semibold">{{ e.nombre }}</td><td>{{ e.capacidad }}</td>
+      <td>{{ '%.0f'|format(e.util_sim * 100) }}% <small class="text-muted">(teórica {{ '%.0f'|format(e.rho_teorica * 100) }}%)</small></td>
+      <td>{{ minutos(e.espera_sim) }} <small class="text-muted">± {{ '%.0f'|format(e.espera_std) }}</small></td>
+      <td>{% if e.espera_teor is not none %}{{ minutos(e.espera_teor) }}{% else %}<span class="text-danger">sin límite</span>{% endif %}</td>
+      <td>{{ '%.1f'|format(e.cola_prom) }}</td></tr>{% endfor %}
+  </tbody>
+</table></div>
+<p class="small text-muted mb-0">Tiempo total simulado: <strong>{{ horas(esc.total_h) }}</strong>
+  {% if esc.teorico_h is not none %}· teórico (suma de las cuatro estaciones): <strong>{{ horas(esc.teorico_h) }}</strong>{% endif %}
+  · órdenes terminadas por día: <strong>{{ '%.1f'|format(esc.completadas_dia) }}</strong></p>
+{% endif %}{% endfor %}
+
+{# ---------- Dónde invertir ---------- #}
+<h5 class="mt-4">¿Dónde conviene invertir primero?</h5>
+<p class="text-muted small">Se agrega <strong>una</strong> persona o máquina a cada estación del escenario A (una a la vez) y se mide cuánto baja el tiempo total.</p>
+<div class="tabla-card table-responsive">
+<table class="table table-sm mb-0">
+  <thead><tr><th>Si agregas…</th><th>Tiempo total</th><th>Mejora frente a A</th></tr></thead>
+  <tbody>{% set mejor = r.inversion | map(attribute='total_h') | list | min if r.inversion else none %}
+  {% for f in r.inversion %}{% set gana = (1 - f.total_h / r.a.total_h) * 100 %}
+    <tr class="{{ 'table-success' if f.total_h == mejor else '' }}"><td>1 más en <strong>{{ f.nombre }}</strong> (quedan {{ f.nueva_cap }})</td>
+      <td>{{ horas(f.total_h) }}</td><td>{{ '%.0f'|format(gana) }}%{% if f.total_h == mejor %} <span class="badge bg-success">mayor impacto</span>{% endif %}</td></tr>
+  {% else %}<tr><td colspan="3" class="text-muted">Todas las estaciones ya están en el máximo permitido.</td></tr>{% endfor %}
+  </tbody>
+</table></div>
+
+{# ---------- Supuestos ---------- #}
+<div class="card card-body mt-4">
+  <h6 class="mb-2"><i class="bi bi-journal-text"></i> Cómo funciona el modelo</h6>
+  <ul class="small text-muted mb-0">
+    <li>Las órdenes llegan al azar (proceso de Poisson): en promedio {{ p.llegadas }} por día de {{ jornada // 60 }} horas, es decir una cada {{ '%.0f'|format(jornada / p.llegadas) }} min.</li>
+    <li>El tiempo en cada estación es aleatorio (exponencial) alrededor del promedio que indicas. Cada estación tiene una sola fila; el horno se modela con su tiempo equivalente por orden.</li>
+    <li>Se simulan {{ p.dias }} días repetidos {{ p.replicas }} veces con semillas distintas y se promedia; el «±» es el intervalo de confianza del 95%. Se descartan los primeros {{ calentamiento }} días, en que el laboratorio arranca vacío. A y B usan las mismas semillas, para que la comparación sea justa.</li>
+    <li>«Espera teórica» sale de la fórmula de colas M/M/c (Erlang C). Si coincide con la simulada, el modelo está bien construido; en estaciones muy cargadas (&gt;85%) la simulación varía más entre repeticiones.</li>
+    <li>La simulación es una herramienta de decisión: no usa tus órdenes registradas sino el ritmo que escribas arriba.</li>
+  </ul>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script>
+Chart.defaults.font.family = "'Plus Jakarta Sans', sans-serif";
+const nombres = {{ r.a.etapas | map(attribute='nombre') | list | tojson }};
+new Chart(document.getElementById('chEsperas'), {type:'bar',
+  data:{labels:nombres, datasets:[
+    {label:'A · Actual', data:{{ r.a.etapas | map(attribute='espera_sim') | map('round', 1) | list | tojson }}, backgroundColor:'#f5a524', borderRadius:6},
+    {label:'B · Propuesto', data:{{ r.b.etapas | map(attribute='espera_sim') | map('round', 1) | list | tojson }}, backgroundColor:'#0fb5a6', borderRadius:6}]},
+  options:{maintainAspectRatio:false, plugins:{legend:{position:'bottom'}},
+    scales:{y:{beginAtZero:true, title:{display:true, text:'minutos en fila'}}}}});
+</script>
+{% endblock %}

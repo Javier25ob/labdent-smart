@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block titulo %}Ajustes{% endblock %}
+{% block subtitulo %}Datos de tu laboratorio y tu WhatsApp{% endblock %}
+{% block contenido %}
+<div class="row g-3" style="max-width:900px">
+  <div class="col-12"><form method="post" class="card card-body">
+    <h5><i class="bi bi-whatsapp text-success"></i> Tu laboratorio</h5>
+    <div class="ayuda-box">El <strong>número de WhatsApp</strong> aparece en el botón «Escribir al laboratorio» que ve el odontólogo cuando escanea el QR. Los mensajes llegarán a <strong>tu</strong> WhatsApp.</div>
+    <label class="form-label">Nombre del laboratorio</label>
+    <input name="nombre" class="form-control mb-3" value="{{ nombre }}" placeholder="Ej. Laboratorio Dental Sonrisa">
+    <label class="form-label">Tu número de WhatsApp (con código de país)</label>
+    <input name="whatsapp" class="form-control" value="{{ whatsapp }}" placeholder="Ej. 573001234567" inputmode="numeric">
+    <div class="form-text mb-3">Escríbelo sin + ni espacios. Colombia: 57 + tu número. México: 52. España: 34.</div>
+    <label class="form-label">Dirección web de tu sistema (opcional)</label>
+    <input name="url_publica" class="form-control" value="{{ url_publica }}" placeholder="Ej. https://milaboratorio.com">
+    <div class="form-text mb-3">Para que el QR funcione desde el celular del odontólogo, tu sistema debe estar publicado en internet. Cuando lo tengas, escribe aquí su dirección.</div>
+    <div><button class="btn btn-primary"><i class="bi bi-check2"></i> Guardar ajustes</button></div>
+  </form></div>
+
+  <div class="col-12"><div class="card card-body" style="border:1px solid #f3c7c9!important">
+    <h5 class="text-danger"><i class="bi bi-trash3"></i> Empezar de cero</h5>
+    <p class="text-muted small mb-2">Borra <strong>todos</strong> los materiales, servicios, odontólogos, pacientes y órdenes. Tus ajustes (nombre y WhatsApp) se conservan. No se puede deshacer; si quieres, descarga antes un <a href="/respaldo">respaldo</a>.</p>
+    <form method="post" action="/ajustes/borrar-datos" class="d-flex gap-2 flex-wrap">
+      <input name="confirmar" class="form-control" style="max-width:260px" placeholder="Escribe BORRAR para confirmar" autocomplete="off">
+      <button class="btn btn-outline-danger">Borrar todos los datos</button>
+    </form>
+  </div></div>
+</div>
+{% endblock %}

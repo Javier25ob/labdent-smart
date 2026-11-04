@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block titulo %}Guía rápida{% endblock %}
+{% block subtitulo %}Cómo funciona LABDENT SMART en 5 pasos{% endblock %}
+{% block contenido %}
+<div class="row g-3" style="max-width:900px">
+  {% for n, t, d, link, txt in [
+   (0,'Pon tu WhatsApp','En Ajustes escribe tu número: así los odontólogos que escaneen el QR te escribirán a ti.','/ajustes/','Ir a Ajustes'),
+   (1,'Registra tus materiales','Los insumos que usas (zirconio, acrílico, yeso…) con lo que tienes hoy y desde qué cantidad quieres que te avise.','/inventario/','Ir a Inventario'),
+   (2,'Crea tus servicios','Cada trabajo que ofreces, con su precio, días de entrega y el material que gasta. Así el inventario baja solo.','/catalogos/?tab=servicios','Ir a Servicios'),
+   (3,'Registra a tus odontólogos','Tus clientes. Los pacientes puedes crearlos al momento de hacer la orden.','/catalogos/?tab=odontologos','Ir a Odontólogos'),
+   (4,'Crea órdenes y avanza su estado','Recibida → En producción → Terminada → Entregada. Al pasar a producción se descuentan los materiales. Pega el QR en la caja y el odontólogo sigue su trabajo desde el celular.','/ordenes/nueva','Crear orden')] %}
+  <div class="col-12"><div class="card"><div class="card-body d-flex gap-3 align-items-center flex-wrap">
+    <div class="paso-num">{{ n + 1 }}</div><div class="flex-grow-1" style="min-width:220px"><strong>{{ t }}</strong><div class="text-muted small">{{ d }}</div></div>
+    {% if link != '/ajustes/' or es_admin %}<a class="btn btn-outline-primary btn-sm" href="{{ link }}">{{ txt }}</a>{% endif %}</div></div></div>
+  {% endfor %}
+  <div class="col-12"><div class="ayuda-box mb-0"><strong>¿Y qué es el Pulso?</strong> Un puntaje de 0 a 100 en el Panel: baja si hay órdenes atrasadas, materiales por reponer o entregas fuera de tiempo. <strong>¿Y el respaldo?</strong> El botón «Respaldo» del menú (solo administradores) descarga una copia de todos tus datos.</div></div>
+</div>
+{% endblock %}

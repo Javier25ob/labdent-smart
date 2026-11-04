@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block titulo %}Clientes y servicios{% endblock %}
+{% block subtitulo %}Aquí registras con quién trabajas y qué ofreces{% endblock %}
+{% macro borrar(tipo, id) %}<form method="post" action="/catalogos/{{ tipo }}/{{ id }}/eliminar" onsubmit="return confirm('¿Eliminar este registro?')"><button class="btn-del" title="Eliminar"><i class="bi bi-trash3"></i></button></form>{% endmacro %}
+{% macro editar_btn(tipo, id) %}<button class="btn-del" title="Editar" data-bs-toggle="modal" data-bs-target="#edit-{{ tipo }}-{{ id }}"><i class="bi bi-pencil"></i></button>{% endmacro %}
+{% block contenido %}
+<div class="nav-tabs-pro">
+  <a class="{{ 'on' if tab=='servicios' }}" href="?tab=servicios"><i class="bi bi-tools"></i> Servicios <span>{{ servicios|length }}</span></a>
+  <a class="{{ 'on' if tab=='odontologos' }}" href="?tab=odontologos"><i class="bi bi-hospital"></i> Odontólogos <span>{{ odontologos|length }}</span></a>
+  <a class="{{ 'on' if tab=='pacientes' }}" href="?tab=pacientes"><i class="bi bi-person-heart"></i> Pacientes <span>{{ pacientes|length }}</span></a>
+  {% if es_admin %}<a class="{{ 'on' if tab=='usuarios' }}" href="?tab=usuarios"><i class="bi bi-person-badge"></i> Mi equipo <span>{{ usuarios|length }}</span></a>{% endif %}
+</div>
+
+{% if tab == 'servicios' %}
+<div class="ayuda-box"><i class="bi bi-lightbulb"></i> Un <strong>servicio</strong> es lo que fabricas (ej. Corona de zirconio). Dile cuánto material gasta y el inventario <strong>se descontará solo</strong> cuando el trabajo entre a producción.</div>
+<div class="row g-3"><div class="col-lg-4"><div class="card card-body">
+  <h5>Nuevo servicio</h5>
+  <form method="post" action="/catalogos/servicio" class="d-grid gap-2">
+    <input name="nombre" class="form-control" placeholder="Nombre (ej. Corona de zirconio)" required>
+    <div class="row g-2"><div class="col"><label class="form-label mb-0">Precio (pesos)</label><input name="precio" type="number" min="0" step="any" class="form-control" placeholder="0"></div>
+    <div class="col"><label class="form-label mb-0">Días de entrega</label><input name="dias" type="number" min="1" class="form-control" value="5" required></div></div>
+    <button class="btn btn-primary">Guardar servicio</button>
+  </form></div></div>
+  <div class="col-lg-8">
+  {% for s in servicios %}
+    <div class="svc-card">
+      <div class="d-flex justify-content-between align-items-start"><div><strong class="fs-6">{{ s.nombre }}</strong>
+        <div class="small text-muted">{{ s.precio|pesos }} · entrega en {{ s.dias_estimados }} días</div></div>
+        <div class="d-flex gap-2">{{ editar_btn('servicio', s.id) }}{{ borrar('servicio', s.id) }}</div></div>
+      <div class="modal fade" id="edit-servicio-{{ s.id }}" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+        <form method="post" action="/catalogos/servicio/{{ s.id }}/editar">
+          <div class="modal-header"><h5 class="modal-title">Editar servicio</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+          <div class="modal-body d-grid gap-2">
+            <input name="nombre" class="form-control" value="{{ s.nombre }}" required>
+            <div class="row g-2"><div class="col"><label class="form-label mb-0">Precio (pesos)</label><input name="precio" type="number" min="0" step="any" class="form-control" value="{{ '%g'|format(s.precio) }}"></div>
+            <div class="col"><label class="form-label mb-0">Días de entrega</label><input name="dias" type="number" min="1" class="form-control" value="{{ s.dias_estimados }}" required></div></div>
+          </div>
+          <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary">Guardar cambios</button></div>
+        </form>
+      </div></div></div>
+      <div class="mt-3 small text-muted fw-semibold">Materiales que gasta:</div>
+      <div class="mt-1">
+        {% for r in s.receta %}<span class="chip">{{ '%g'|format(r.cantidad) }} {{ r.unidad }} de {{ r.nombre }}
+          <form method="post" action="/catalogos/receta/quitar" class="d-inline"><input type="hidden" name="servicio_id" value="{{ s.id }}"><input type="hidden" name="material_id" value="{{ r.material_id }}"><button title="Quitar">✕</button></form></span>
+        {% else %}<span class="text-muted small">Ninguno todavía.</span>{% endfor %}
+      </div>
+      {% if materiales %}
+      <form method="post" action="/catalogos/receta" class="row g-2 mt-2">
+        <input type="hidden" name="servicio_id" value="{{ s.id }}">
+        <div class="col-sm-5"><select name="material_id" class="form-select form-select-sm">{% for m in materiales %}<option value="{{ m.id }}">{{ m.nombre }} ({{ m.unidad }})</option>{% endfor %}</select></div>
+        <div class="col-sm-4"><input name="cantidad" type="number" min="0" step="any" class="form-control form-control-sm" placeholder="Cantidad" required></div>
+        <div class="col-sm-3"><button class="btn btn-outline-primary btn-sm w-100">+ Añadir</button></div>
+      </form>
+      {% else %}<div class="small mt-2"><a href="/inventario/">Primero registra tus materiales en Inventario →</a></div>{% endif %}
+    </div>
+  {% else %}<div class="card"><div class="vacio"><i class="bi bi-tools ico-big"></i><h5>Aún no tienes servicios</h5><p>Crea el primero con el formulario de la izquierda.</p></div></div>{% endfor %}
+  </div></div>
+
+{% elif tab == 'odontologos' %}
+<div class="ayuda-box"><i class="bi bi-lightbulb"></i> Los <strong>odontólogos</strong> son tus clientes: quienes te envían los trabajos.</div>
+<div class="row g-3"><div class="col-lg-4"><div class="card card-body"><h5>Nuevo odontólogo</h5>
+  <form method="post" action="/catalogos/odontologo" class="d-grid gap-2">
+    <input name="nombre" class="form-control" placeholder="Nombre (ej. Dra. Ana Gómez)" required>
+    <input name="clinica" class="form-control" placeholder="Clínica o consultorio">
+    <input name="telefono" class="form-control" placeholder="Teléfono / WhatsApp">
+    <div class="acceso-box"><div class="small fw-semibold mb-1"><i class="bi bi-key"></i> Acceso al portal del cliente (opcional)</div>
+      <input name="usuario" class="form-control mb-2" placeholder="Usuario (ej. dra.gomez)" autocomplete="off">
+      <input name="clave" type="password" class="form-control" placeholder="Contraseña (mín. {{ min_clave }} caracteres)" autocomplete="new-password">
+      <div class="form-text">Con esto el odontólogo ve todas sus órdenes en {{ request.host_url }}portal/login</div></div>
+    <button class="btn btn-primary">Guardar odontólogo</button></form></div></div>
+  <div class="col-lg-8"><div class="card card-body py-2">
+    {% for o in odontologos %}<div class="item-row"><div class="paso-num" style="width:38px;height:38px;font-size:.9rem">{{ o.nombre[:1] }}</div>
+      <div class="grow"><strong>{{ o.nombre }}</strong><div class="small text-muted">{{ o.clinica or 'Sin clínica' }}{% if o.telefono %} · {{ o.telefono }}{% endif %}</div></div>
+      {% if o.usuario and o.tiene_clave %}<span class="badge bg-success-subtle text-success-emphasis" title="Puede entrar al portal del cliente"><i class="bi bi-key"></i> {{ o.usuario }}</span>{% else %}<span class="badge bg-light text-muted">Sin acceso</span>{% endif %}
+      <div class="d-flex gap-2">{{ editar_btn('odontologo', o.id) }}{{ borrar('odontologo', o.id) }}</div></div>
+    <div class="modal fade" id="edit-odontologo-{{ o.id }}" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+      <form method="post" action="/catalogos/odontologo/{{ o.id }}/editar">
+        <div class="modal-header"><h5 class="modal-title">Editar odontólogo</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body d-grid gap-2">
+          <input name="nombre" class="form-control" value="{{ o.nombre }}" required>
+          <input name="clinica" class="form-control" value="{{ o.clinica or '' }}" placeholder="Clínica o consultorio">
+          <input name="telefono" class="form-control" value="{{ o.telefono or '' }}" placeholder="Teléfono / WhatsApp">
+          <div class="acceso-box"><div class="small fw-semibold mb-1"><i class="bi bi-key"></i> Acceso al portal del cliente</div>
+            <input name="usuario" class="form-control mb-2" value="{{ o.usuario or '' }}" placeholder="Usuario (vacío = sin acceso)" autocomplete="off">
+            <input name="clave" type="password" class="form-control" placeholder="{{ 'Nueva contraseña (vacío = dejar la actual)' if o.tiene_clave else 'Contraseña (mín. ' ~ min_clave ~ ' caracteres)' }}" autocomplete="new-password">
+            <div class="form-text">Para quitarle el acceso, deja el usuario vacío.</div></div>
+        </div>
+        <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary">Guardar cambios</button></div>
+      </form>
+    </div></div></div>
+    {% else %}<div class="vacio"><i class="bi bi-hospital ico-big"></i><h5>Sin odontólogos</h5><p>Registra el primero para poder crear órdenes.</p></div>{% endfor %}
+  </div></div></div>
+
+{% elif tab == 'pacientes' %}
+<div class="ayuda-box"><i class="bi bi-lightbulb"></i> No tienes que venir aquí siempre: también puedes crear un paciente nuevo directamente al hacer una orden.</div>
+<div class="row g-3"><div class="col-lg-4"><div class="card card-body"><h5>Nuevo paciente</h5>
+  {% if odontologos %}
+  <form method="post" action="/catalogos/paciente" class="d-grid gap-2">
+    <input name="nombre" class="form-control" placeholder="Nombre del paciente" required>
+    <select name="odontologo_id" class="form-select">{% for o in odontologos %}<option value="{{ o.id }}">{{ o.nombre }}</option>{% endfor %}</select>
+    <button class="btn btn-primary">Guardar paciente</button></form>
+  {% else %}<p class="text-muted small mb-2">Primero registra un odontólogo.</p><a class="btn btn-outline-primary btn-sm" href="?tab=odontologos">Ir a odontólogos</a>{% endif %}</div></div>
+  <div class="col-lg-8"><div class="card card-body py-2">
+    {% for p in pacientes %}<div class="item-row"><div class="grow"><strong>{{ p.nombre }}</strong><div class="small text-muted">Paciente de {{ p.odontologo }}</div></div>
+      <div class="d-flex gap-2">{{ editar_btn('paciente', p.id) }}{{ borrar('paciente', p.id) }}</div></div>
+    <div class="modal fade" id="edit-paciente-{{ p.id }}" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+      <form method="post" action="/catalogos/paciente/{{ p.id }}/editar">
+        <div class="modal-header"><h5 class="modal-title">Editar paciente</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body d-grid gap-2">
+          <input name="nombre" class="form-control" value="{{ p.nombre }}" required>
+          <select name="odontologo_id" class="form-select">{% for o in odontologos %}<option value="{{ o.id }}" {{ 'selected' if o.id == p.odontologo_id }}>{{ o.nombre }}</option>{% endfor %}</select>
+        </div>
+        <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary">Guardar cambios</button></div>
+      </form>
+    </div></div></div>
+    {% else %}<div class="vacio"><i class="bi bi-person-heart ico-big"></i><h5>Sin pacientes</h5></div>{% endfor %}
+  </div></div></div>
+
+{% else %}
+<div class="ayuda-box"><i class="bi bi-lightbulb"></i> Tu <strong>equipo</strong>: las personas que trabajan en el laboratorio y su función.</div>
+<div class="row g-3"><div class="col-lg-4"><div class="card card-body"><h5>Nueva persona</h5>
+  <form method="post" action="/catalogos/usuario" class="d-grid gap-2">
+    <input name="nombre" class="form-control" placeholder="Nombre" required>
+    <select name="rol" class="form-select">{% for r in roles %}<option>{{ r }}</option>{% endfor %}</select>
+    <div class="acceso-box"><div class="small fw-semibold mb-1"><i class="bi bi-key"></i> Acceso al panel</div>
+      <input name="usuario" class="form-control mb-2" placeholder="Usuario" autocomplete="off">
+      <input name="clave" type="password" class="form-control" placeholder="Contraseña (mín. {{ min_clave }} caracteres)" autocomplete="new-password">
+      <div class="form-text">Sin usuario y contraseña, la persona figura en el equipo pero no puede entrar.</div></div>
+    <button class="btn btn-primary">Guardar</button></form></div></div>
+  <div class="col-lg-8"><div class="card card-body py-2">
+    {% for u in usuarios %}<div class="item-row"><div class="grow"><strong>{{ u.nombre }}</strong>{% if usuario and u.id == usuario.id %} <span class="small text-muted">(tú)</span>{% endif %}
+        <div class="small text-muted">{% if u.usuario %}<i class="bi bi-key"></i> {{ u.usuario }}{% else %}Sin acceso al panel{% endif %}</div></div><span class="badge bg-secondary">{{ u.rol }}</span>
+      <div class="d-flex gap-2">{{ editar_btn('usuario', u.id) }}{{ borrar('usuario', u.id) }}</div></div>
+    <div class="modal fade" id="edit-usuario-{{ u.id }}" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
+      <form method="post" action="/catalogos/usuario/{{ u.id }}/editar">
+        <div class="modal-header"><h5 class="modal-title">Editar persona</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body d-grid gap-2">
+          <input name="nombre" class="form-control" value="{{ u.nombre }}" required>
+          <select name="rol" class="form-select">{% for r in roles %}<option {{ 'selected' if u.rol == r }}>{{ r }}</option>{% endfor %}</select>
+          <div class="acceso-box"><div class="small fw-semibold mb-1"><i class="bi bi-key"></i> Acceso al panel</div>
+            <input name="usuario" class="form-control mb-2" value="{{ u.usuario or '' }}" placeholder="Usuario (vacío = sin acceso)" autocomplete="off">
+            <input name="clave" type="password" class="form-control" placeholder="Nueva contraseña (vacío = dejar la actual)" autocomplete="new-password">
+            <div class="form-text">Siempre debe quedar al menos un administrador con acceso.</div></div>
+        </div>
+        <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary">Guardar cambios</button></div>
+      </form>
+    </div></div></div>
+    {% else %}<div class="vacio"><i class="bi bi-person-badge ico-big"></i><h5>Sin personas registradas</h5></div>{% endfor %}
+  </div></div></div>
+{% endif %}
+{% endblock %}
