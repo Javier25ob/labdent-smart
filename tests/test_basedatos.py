@@ -126,5 +126,71 @@ class Operaciones(BaseLogin):
             db.close()
 
 
+class Vistas(BaseLogin):
+    """Las vistas muestran nombres en vez de ids, sin duplicar datos."""
+
+    def preparar(self):
+        db = database.conectar()
+        od = db.insertar("INSERT INTO odontologos (nombre, clinica) VALUES ('Dra. Ana', 'Clínica Sol')")
+        pa = db.insertar("INSERT INTO pacientes (nombre, odontologo_id) VALUES ('Juan Pérez', ?)", (od,))
+        sv = db.insertar("INSERT INTO servicios (nombre, precio, dias_estimados) VALUES ('Corona', 380000, 5)")
+        ma = db.insertar("INSERT INTO materiales (nombre, unidad, stock) VALUES ('Zirconio', 'und', 10)")
+        db.execute("INSERT INTO servicio_materiales (servicio_id, material_id, cantidad) VALUES (?, ?, 2)", (sv, ma))
+        orden = db.insertar("INSERT INTO ordenes (odontologo_id, paciente_id, servicio_id, fecha_ingreso, "
+                            "fecha_entrega_estimada) VALUES (?, ?, ?, '2026-11-04 10:00:00', '2026-11-09')",
+                            (od, pa, sv))
+        db.execute("INSERT INTO historial_estados (orden_id, estado, fecha) VALUES (?, 'Recibida', '2026-11-04')", (orden,))
+        db.execute("INSERT INTO movimientos_inventario (material_id, tipo, cantidad, fecha, orden_id, nota) "
+                   "VALUES (?, 'SALIDA', 2, '2026-11-04', ?, 'Consumo')", (ma, orden))
+        db.commit()
+        return db
+
+    def test_ordenes_con_nombres(self):
+        db = self.preparar()
+        try:
+            f = db.execute("SELECT * FROM v_ordenes").fetchone()
+            self.assertEqual((f["odontologo"], f["clinica"], f["paciente"], f["servicio"], f["estado"]),
+                             ("Dra. Ana", "Clínica Sol", "Juan Pérez", "Corona", "Recibida"))
+            self.assertEqual(f["precio"], 380000)
+        finally:
+            db.close()
+
+    def test_resto_de_vistas(self):
+        db = self.preparar()
+        try:
+            self.assertEqual(db.execute("SELECT paciente, odontologo FROM v_pacientes").fetchone()[:], ("Juan Pérez", "Dra. Ana"))
+            m = db.execute("SELECT material, tipo, cantidad, orden FROM v_movimientos_inventario").fetchone()
+            self.assertEqual((m["material"], m["tipo"], m["cantidad"]), ("Zirconio", "SALIDA", 2))
+            r = db.execute("SELECT servicio, material, cantidad FROM v_recetas").fetchone()
+            self.assertEqual((r["servicio"], r["material"], r["cantidad"]), ("Corona", "Zirconio", 2))
+            h = db.execute("SELECT paciente, servicio, estado FROM v_historial_estados").fetchone()
+            self.assertEqual(tuple(h), ("Juan Pérez", "Corona", "Recibida"))
+        finally:
+            db.close()
+
+    def test_las_vistas_no_exponen_contrasenas_y_se_pueden_recrear(self):
+        db = database.conectar()
+        try:
+            for nombre in database.VISTAS:
+                cur = db.execute(f"SELECT * FROM {nombre}")
+                self.assertEqual(cur.fetchall(), [])
+                nombres = [d[0] for d in cur.description]
+                self.assertFalse([n for n in nombres if "clave" in n or "hash" in n], nombre)
+            database.crear_vistas(db)
+            database.crear_vistas(db)                    # repetirlo no falla ni borra nada
+        finally:
+            db.close()
+        database.asegurar_ajustes()                     # el arranque normal también las deja listas
+
+    def test_nombre_cambiado_se_refleja_en_las_ordenes_viejas(self):
+        db = self.preparar()
+        try:
+            db.execute("UPDATE pacientes SET nombre = 'Juan P. Gómez'")
+            db.commit()
+            self.assertEqual(db.execute("SELECT paciente FROM v_ordenes").fetchone()[0], "Juan P. Gómez")
+        finally:
+            db.close()
+
+
 if __name__ == "__main__":
     unittest.main()

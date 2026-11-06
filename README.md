@@ -88,7 +88,8 @@ La app funciona con dos motores usando el mismo código:
 3. En la carpeta del proyecto copia `.env.example` como `.env` y pega la URI en `DATABASE_URL=`, cambiando `[YOUR-PASSWORD]` por tu contraseña. Si la contraseña tiene símbolos (`@ : / # ?`), escríbelos con su código (`@` = `%40`, `#` = `%23`).
 4. Pon también una `LABDENT_SECRET_KEY` y que **todo el equipo use la misma** (si no, los QR generados en un computador no sirven en otro): `python -c "import secrets; print(secrets.token_hex(32))"`.
 5. `pip install -r requirements.txt` y `python app.py`. Al arrancar crea las tablas que falten (sin borrar nada) y muestra `Base de datos: PostgreSQL / Supabase`. Entra a `/primer-acceso` para crear el administrador. Los demás solo copian el `.env` (por un canal privado, **nunca por GitHub**).
-6. Para ver los datos: en Supabase, *Table Editor*.
+6. **Comprueba la conexión** antes de arrancar: `python verificar_conexion.py`. Te dice si encuentra el `.env`, si leyó la `DATABASE_URL`, si logra conectarse y, si no, por qué. Nunca muestra tu contraseña.
+7. Para ver los datos: en Supabase, *Table Editor*. Las tablas guardan referencias (`odontologo_id = 1`); para leer los nombres usa las **vistas** (ver abajo).
 
 **¿Ya tenías datos en SQLite?** Con `DATABASE_URL` configurada: `python migrar_sqlite_a_postgres.py` los copia a PostgreSQL (si allá ya hay datos, no toca nada salvo que añadas `--reemplazar`).
 
@@ -99,11 +100,24 @@ La app funciona con dos motores usando el mismo código:
 - Los precios se guardan como `DOUBLE PRECISION` en pesos (COP); las fechas como texto `AAAA-MM-DD`, igual que en SQLite.
 - Tablas: `schema.sql` (SQLite) y `schema_postgres.sql` (PostgreSQL) tienen el mismo modelo.
 
+### Vistas: la base legible
+Las tablas están **normalizadas**: una orden guarda `odontologo_id`, `paciente_id` y `servicio_id`, no los nombres. Así, si corriges el nombre de un paciente, se actualiza en todas sus órdenes y nunca hay datos repetidos o contradictorios. Para leerlas sin ir tabla por tabla, la app crea al arrancar estas **vistas** (solo lectura, con los nombres ya unidos; en Supabase aparecen junto a las tablas en *Table Editor*, o en *Database → Views*):
+
+| Vista | Muestra |
+|---|---|
+| `v_ordenes` | orden, estado, odontólogo, clínica, paciente, servicio, precio y fechas |
+| `v_pacientes` | paciente y su odontólogo/clínica |
+| `v_movimientos_inventario` | fecha, entrada/salida, material, cantidad, unidad y orden |
+| `v_recetas` | qué materiales y cuánto consume cada servicio |
+| `v_historial_estados` | cambios de estado de cada orden, con paciente y servicio |
+
+No guardan datos propios ni incluyen contraseñas. Con PostgreSQL 15+ se crean con `security_invoker`, para que la seguridad de las tablas (RLS) también las proteja. Además, en cualquier tabla del *Table Editor* las columnas con llave foránea tienen una flecha que abre la fila relacionada.
+
 ## Valores en pesos
 Todos los montos se guardan como número en pesos colombianos (COP) y se muestran con el formato `$380.000` mediante el filtro `|pesos` (definido en `app.py`).
 
 ## Pruebas
-`python -m unittest discover -s tests -v` (54 pruebas, incluidas simulación, pesos y base de datos: primer acceso, login, roles, portal del cliente, consulta pública y migración de bases antiguas). Para probar contra PostgreSQL: `TEST_DATABASE_URL=postgresql://usuario@host/base python -m unittest discover -s tests` (¡esa base se borra en cada prueba: usa una de pruebas!).
+`python -m unittest discover -s tests -v` (58 pruebas, incluidas simulación, pesos, base de datos y vistas: primer acceso, login, roles, portal del cliente, consulta pública y migración de bases antiguas). Para probar contra PostgreSQL: `TEST_DATABASE_URL=postgresql://usuario@host/base python -m unittest discover -s tests` (¡esa base se borra en cada prueba: usa una de pruebas!).
 
 ## Ideas para ampliar
 Gráficos (Chart.js), exportar a Excel, notificaciones por WhatsApp/correo, modelos predictivos más avanzados.

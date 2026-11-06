@@ -33,6 +33,46 @@ DATABASE_URL = config.DATABASE_URL                            # "" = SQLite (las
 TABLAS = ("usuarios", "odontologos", "pacientes", "servicios", "materiales", "servicio_materiales",
           "ordenes", "historial_estados", "movimientos_inventario", "configuracion")
 
+# Vistas de LECTURA: muestran los nombres en lugar de los números (ids) para que, al abrir la base
+# (por ejemplo en el Table Editor de Supabase), se vea ordenada y legible. No guardan datos propios:
+# la información sigue en las tablas normalizadas (cambiar el nombre de un paciente se refleja en
+# todas sus órdenes). Se recrean solas al arrancar. Nunca incluyen contraseñas.
+VISTAS = {
+    "v_ordenes": """
+        SELECT o.id AS orden, o.estado, od.nombre AS odontologo, od.clinica, p.nombre AS paciente,
+               s.nombre AS servicio, s.precio, o.fecha_ingreso, o.fecha_entrega_estimada,
+               o.fecha_entrega_real, o.observaciones
+        FROM ordenes o
+        JOIN odontologos od ON od.id = o.odontologo_id
+        JOIN pacientes p ON p.id = o.paciente_id
+        JOIN servicios s ON s.id = o.servicio_id
+        ORDER BY o.id""",
+    "v_pacientes": """
+        SELECT p.id, p.nombre AS paciente, od.nombre AS odontologo, od.clinica
+        FROM pacientes p
+        LEFT JOIN odontologos od ON od.id = p.odontologo_id
+        ORDER BY p.id""",
+    "v_movimientos_inventario": """
+        SELECT mv.id, mv.fecha, mv.tipo, m.nombre AS material, mv.cantidad, m.unidad,
+               mv.orden_id AS orden, mv.nota
+        FROM movimientos_inventario mv
+        JOIN materiales m ON m.id = mv.material_id
+        ORDER BY mv.id""",
+    "v_recetas": """
+        SELECT s.nombre AS servicio, m.nombre AS material, sm.cantidad, m.unidad
+        FROM servicio_materiales sm
+        JOIN servicios s ON s.id = sm.servicio_id
+        JOIN materiales m ON m.id = sm.material_id
+        ORDER BY s.nombre, m.nombre""",
+    "v_historial_estados": """
+        SELECT h.id, h.orden_id AS orden, p.nombre AS paciente, s.nombre AS servicio, h.estado, h.fecha
+        FROM historial_estados h
+        JOIN ordenes o ON o.id = h.orden_id
+        JOIN pacientes p ON p.id = o.paciente_id
+        JOIN servicios s ON s.id = o.servicio_id
+        ORDER BY h.id""",
+}
+
 # Error que lanza cualquiera de los dos motores al violar una llave foránea o un UNIQUE
 ErrorIntegridad = (sqlite3.IntegrityError,) + ((psycopg.errors.IntegrityError,) if psycopg else ())
 
@@ -215,6 +255,28 @@ def crear_esquema_si_falta():
         conn.close()
 
 
+def crear_vistas(conn):
+    """(Re)crea las vistas de lectura. Es seguro repetirlo: no toca los datos. Si algo falla no se
+    detiene la app (las vistas son solo para leer mejor la base), solo se avisa."""
+    try:
+        for nombre, consulta in VISTAS.items():
+            if conn.postgres:
+                conn.execute(f"CREATE OR REPLACE VIEW {nombre} AS {consulta}")
+            else:
+                conn.execute(f"DROP VIEW IF EXISTS {nombre}")
+                conn.execute(f"CREATE VIEW {nombre} AS {consulta}")
+        # PostgreSQL 15+: que la vista respete la seguridad (RLS) de las tablas; así la API pública de
+        # Supabase tampoco puede leer los datos a través de ellas.
+        if conn.postgres and int(conn.execute("SHOW server_version_num").fetchone()[0]) >= 150000:
+            for nombre in VISTAS:
+                conn.execute(f"ALTER VIEW {nombre} SET (security_invoker = true)")
+        conn.commit()
+    except Exception as exc:                        # noqa: BLE001
+        conn.rollback()
+        print(f"Aviso: no se pudieron crear las vistas de lectura ({type(exc).__name__}: {exc}). "
+              "La app funciona igual.")
+
+
 def init_db():
     """Crea las tablas desde cero. ¡BORRA los datos existentes!"""
     conn = conectar()
@@ -226,6 +288,7 @@ def init_db():
         else:
             conn.executescript(SCHEMA_PATH.read_text(encoding="utf-8"))
         conn.commit()
+        crear_vistas(conn)
     finally:
         conn.close()
 
@@ -254,6 +317,7 @@ def asegurar_ajustes():
         conn.execute(AJUSTES_SQL)
         migrar_login(conn)
         conn.commit()
+        crear_vistas(conn)
     finally:
         conn.close()
 
