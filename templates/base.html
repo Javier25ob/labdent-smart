@@ -21,13 +21,14 @@
     <nav>
       <a class="nav-l {{ 'active' if ep.startswith('panel.dashboard') }}" href="/"><i class="bi bi-activity"></i>Panel</a>
       <a class="nav-l {{ 'active' if ep.startswith('ordenes') }}" href="/ordenes/"><i class="bi bi-clipboard2-pulse"></i>Órdenes</a>
+      <a class="nav-l {{ 'active' if ep.startswith('solicitudes') }}" href="/solicitudes/"><i class="bi bi-inbox"></i>Solicitudes{% if n_solicitudes %}<span class="badge estado-Pendiente ms-auto">{{ n_solicitudes }}</span>{% endif %}</a>
       <a class="nav-l {{ 'active' if ep.startswith('inventario') }}" href="/inventario/"><i class="bi bi-boxes"></i>Inventario</a>
       <a class="nav-l {{ 'active' if ep.startswith('panel.simulacion') }}" href="/simulacion"><i class="bi bi-graph-up-arrow"></i>Simulación</a>
       <a class="nav-l {{ 'active' if ep.startswith('catalogos') }}" href="/catalogos/"><i class="bi bi-people"></i>Clientes y servicios</a>
       {% if es_admin %}<a class="nav-l {{ 'active' if ep.startswith('ajustes') }}" href="/ajustes/"><i class="bi bi-gear"></i>Ajustes</a>{% endif %}
       <a class="nav-l {{ 'active' if ep.startswith('panel.ayuda') }}" href="/ayuda"><i class="bi bi-question-circle"></i>Guía rápida</a>
     </nav>
-    <a class="side-card" href="/seguimiento/" target="_blank"><strong><i class="bi bi-qr-code-scan"></i> Portal del odontólogo</strong>Cada orden tiene un QR para que la clínica siga su trabajo en vivo.</a>
+    <a class="side-card" href="/portal/login" target="_blank"><strong><i class="bi bi-qr-code-scan"></i> Portal del odontólogo</strong>Tus clientes siguen sus órdenes, piden trabajos y gestionan sus pacientes.</a>
     <div class="mini">
       {% if es_admin %}<a href="/respaldo" title="Descarga una copia de todos tus datos"><i class="bi bi-cloud-arrow-down"></i> Respaldo</a>{% endif %}
       {% if usuario %}

@@ -6,9 +6,10 @@ from flask import Flask, abort, g, redirect, request, session, url_for
 import config
 import database
 from database import asegurar_ajustes, close_db, get_ajuste, get_db, hay_administrador, init_db
-from routes import ajustes, auth, catalogos, inventario, ordenes, panel, portal, seguimiento
+from routes import ajustes, auth, catalogos, inventario, ordenes, panel, portal, seguimiento, solicitudes
 from services import acceso
 from services import seguimiento as seg_svc
+from services import solicitudes as sol_svc
 
 # Páginas que se pueden abrir SIN iniciar sesión:
 #  - los dos formularios de login y la creación del primer administrador
@@ -46,7 +47,7 @@ def create_app():
         PERMANENT_SESSION_LIFETIME=timedelta(hours=config.HORAS_SESION),
     )
     app.teardown_appcontext(close_db)
-    for modulo in (panel, ordenes, inventario, catalogos, seguimiento, ajustes, auth, portal):
+    for modulo in (panel, ordenes, solicitudes, inventario, catalogos, seguimiento, ajustes, auth, portal):
         app.register_blueprint(modulo.bp)
     app.jinja_env.filters["fecha_larga"] = seg_svc.fecha_larga
     app.jinja_env.filters["pesos"] = pesos
@@ -114,7 +115,9 @@ def create_app():
         return {"lab_nombre": get_ajuste("lab_nombre", config.LAB_NOMBRE),
                 "lab_whatsapp": get_ajuste("lab_whatsapp", ""),
                 "usuario": usuario, "cliente": cliente,
-                "es_admin": acceso.es_admin()}
+                "es_admin": acceso.es_admin(),
+                # contador del menú «Solicitudes» (solo lo ve el personal del laboratorio)
+                "n_solicitudes": sol_svc.contar_pendientes(get_db()) if usuario else 0}
     return app
 
 

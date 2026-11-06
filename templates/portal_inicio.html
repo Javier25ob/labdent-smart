@@ -1,0 +1,63 @@
+{% extends "portal_base.html" %}
+{% block titulo_pagina %}Mis órdenes{% endblock %}
+{% block hero %}
+  <h1>Hola, {{ cliente.nombre }}</h1>
+  <p>{% if resumen.activas %}Tienes {{ resumen.activas }} trabajo(s) en proceso{% else %}No tienes trabajos en proceso{% endif %}{% if cliente.clinica %} · {{ cliente.clinica }}{% endif %}.</p>
+{% endblock %}
+{% block contenido %}
+{% if hay_algo %}
+<div class="mini-kpis">
+  <div class="k"><b>{{ resumen.activas }}</b><span>En proceso</span></div>
+  <div class="k {{ 'alerta' if resumen.atrasadas }}"><b>{{ resumen.atrasadas }}</b><span>Con retraso</span></div>
+  <div class="k"><b>{{ resumen.pendientes }}</b><span>Solicitudes pendientes</span></div>
+  <div class="k"><b>{{ resumen.entregadas }}</b><span>Entregadas</span></div>
+</div>
+{% endif %}
+
+{% if pendientes %}
+<div class="sec-t">Solicitudes esperando respuesta del laboratorio</div>
+{% for s in pendientes %}
+<div class="card mb-2 sol-pend"><div class="card-body d-flex justify-content-between align-items-center gap-3 flex-wrap">
+  <div>
+    <strong>{{ s.servicio }}</strong>
+    <div class="small text-muted">Paciente: {{ s.paciente }} · Enviada el {{ s.fecha_solicitud|fecha_larga }}</div>
+    {% if s.observaciones %}<div class="small mt-1"><i class="bi bi-chat-left-text"></i> {{ s.observaciones }}</div>{% endif %}
+  </div>
+  <div class="text-end">
+    <span class="badge estado-Pendiente">Pendiente</span>
+    <form method="post" action="/portal/solicitudes/{{ s.id }}/cancelar" class="mt-2"
+          onsubmit="return confirm('¿Cancelar esta solicitud?')">
+      <button class="btn btn-sm btn-outline-dark py-1"><i class="bi bi-x-lg"></i> Cancelar</button>
+    </form>
+  </div>
+</div></div>
+{% endfor %}
+{% endif %}
+
+<div class="sec-t">Trabajos en proceso</div>
+{% for o in activas %}
+{% set paso = ['Recibida','En producción','Terminada','Entregada'].index(o.estado) %}
+<a class="card mb-2 orden-card" href="/portal/orden/{{ o.id }}"><div class="card-body d-flex justify-content-between align-items-center gap-3 flex-wrap w-100">
+  <div>
+    <span class="codigo">{{ o.codigo }}</span>
+    <div class="mt-1"><strong>{{ o.servicio }}</strong></div>
+    <div class="small text-muted">Paciente: {{ o.paciente }}</div>
+    <div class="barra" title="Paso {{ paso + 1 }} de 4"><i style="width:{{ (paso + 1) * 25 }}%"></i></div>
+  </div>
+  <div class="text-end">
+    <span class="badge estado-{{ o.estado|replace(' ','_') }}">{{ o.estado }}</span>
+    <div class="small text-muted mt-1">Entrega estimada: {{ o.fecha_entrega_estimada|fecha_larga }}
+      {% if o.dias < 0 %}<br><span class="text-danger fw-semibold">{{ -o.dias }} día(s) de retraso</span>
+      {% elif o.dias == 0 %}<br><span class="fw-semibold" style="color:var(--teal-d)">¡Es hoy!</span>{% endif %}</div>
+    <div class="small mt-1" style="color:var(--teal-d)">Ver detalle <i class="bi bi-chevron-right"></i></div>
+  </div>
+</div></a>
+{% else %}
+<div class="card"><div class="vacio">
+  <i class="bi bi-inbox ico-big"></i>
+  <h5>{% if hay_algo %}Nada en producción ahora mismo{% else %}Aún no tienes trabajos con nosotros{% endif %}</h5>
+  <p>Envía tu primera solicitud y el laboratorio la convierte en una orden con seguimiento en vivo.</p>
+  <a class="btn btn-primary" href="/portal/solicitar"><i class="bi bi-plus-lg"></i> Solicitar un trabajo</a>
+</div></div>
+{% endfor %}
+{% endblock %}

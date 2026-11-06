@@ -19,6 +19,7 @@ Para que **todo el equipo comparta los mismos datos**, conecta la app a PostgreS
 | 1 | `schema.sql`, `schema_postgres.sql`, `database.py` | Tablas y conexión (SQLite o PostgreSQL/Supabase) |
 | 2 | `services/inventario.py` | Entradas, salidas y alertas de stock bajo |
 | 3 | `services/ordenes.py` | Crear órdenes, cambiar estado, descuento automático de materiales |
+| 3B | `services/solicitudes.py` | Solicitudes de trabajo del odontólogo: crear, aceptar (crea la orden), rechazar, cancelar |
 | 4 | `services/analitica.py` | Indicadores, recomendaciones por reglas, predicción, simulación y optimización |
 | 5 | `routes/panel.py` | Panel principal y simulación |
 | 6 | `routes/ordenes.py` | Pantallas de órdenes |
@@ -29,7 +30,9 @@ Para que **todo el equipo comparta los mismos datos**, conecta la app a PostgreS
 | 11 | `services/acceso.py`, `routes/auth.py`, `routes/portal.py` | Login del personal y del cliente, roles y límite de intentos |
 | 10 | `seed.py` | Datos de ejemplo |
 | 4B | `services/seguimiento.py` | **Diferenciador:** código/QR por orden, riesgo de atraso y Pulso del laboratorio |
-| 6B | `routes/seguimiento.py` | Portal público del odontólogo y etiqueta imprimible |
+| 6B | `routes/seguimiento.py` | Consulta pública por código/QR y etiqueta imprimible |
+| 6C | `routes/solicitudes.py` | Bandeja de solicitudes en el panel del laboratorio |
+| 11B | `routes/portal.py` | Portal del odontólogo: órdenes, solicitudes, pacientes, historial y perfil |
 | — | `templates/`, `static/` | Pantallas (Bootstrap + tema propio) y estilos |
 
 ## Flujo principal
@@ -44,10 +47,26 @@ Hay dos entradas separadas:
 | Quién | Dónde entra | Qué ve |
 |---|---|---|
 | Personal del laboratorio | `/login` | El panel completo, según su rol |
-| Odontólogo (cliente) | `/portal/login` | Solo **sus** órdenes (`/portal/`) |
+| Odontólogo (cliente) | `/portal/login` | Su portal: **sus** órdenes, pacientes, solicitudes e historial |
 
 **Roles del personal:** `Administrador`, `Técnico` y `Recepción`. Solo el Administrador entra a **Ajustes**, **Respaldo** y **Mi equipo** (los demás reciben 403).
 Las cuentas se crean en *Clientes y servicios*: en **Mi equipo** (personal) y en **Odontólogos** (acceso al portal, opcional). Si dejas el usuario vacío, esa persona queda sin acceso. Siempre debe quedar al menos un administrador con acceso.
+
+### Portal del odontólogo (cliente)
+Más completo que una simple consulta, pero sin acceso a lo interno del laboratorio:
+
+| Sección | Qué puede hacer el odontólogo |
+|---|---|
+| **Mis órdenes** (`/portal/`) | Resumen (en proceso, con retraso, pendientes, entregadas) y sus trabajos activos |
+| **Detalle** (`/portal/orden/<id>`) | Etapas, línea de tiempo con fechas y entrega estimada. Una orden ajena da 404 |
+| **Solicitar trabajo** (`/portal/solicitar`) | Elige paciente (o crea uno), servicio e indicaciones. Queda *Pendiente* |
+| **Mis pacientes** (`/portal/pacientes`) | Registra, renombra y elimina **sus** pacientes (no los que ya tienen órdenes) |
+| **Historial** (`/portal/historial`) | Trabajos entregados (a tiempo o no) y sus solicitudes con su estado y motivo de rechazo |
+| **Mi perfil** (`/portal/perfil`) | Edita nombre, clínica y teléfono; cambia su contraseña |
+
+Las solicitudes llegan al panel en **Solicitudes** (con contador en el menú y aviso en el panel). El personal la **acepta** (se crea la orden con su QR y fecha de entrega) o la **rechaza** con un motivo que el odontólogo ve. Si al servicio le falta material, la bandeja lo avisa antes de aceptar. El odontólogo **no** ve inventario, costos, simulación ni datos de otros clientes, y no puede avanzar estados.
+
+La tabla `solicitudes` se crea sola al arrancar si tu base es anterior a este cambio (SQLite y Supabase): no hay que borrar nada.
 
 La consulta pública por código/QR (`/seguimiento/<código>`) sigue abierta a propósito: la clínica escanea el QR y ve el avance sin iniciar sesión.
 
@@ -110,6 +129,7 @@ Las tablas están **normalizadas**: una orden guarda `odontologo_id`, `paciente_
 | `v_movimientos_inventario` | fecha, entrada/salida, material, cantidad, unidad y orden |
 | `v_recetas` | qué materiales y cuánto consume cada servicio |
 | `v_historial_estados` | cambios de estado de cada orden, con paciente y servicio |
+| `v_solicitudes` | solicitudes del portal con odontólogo, paciente, servicio, estado y motivo |
 
 No guardan datos propios ni incluyen contraseñas. Con PostgreSQL 15+ se crean con `security_invoker`, para que la seguridad de las tablas (RLS) también las proteja. Además, en cualquier tabla del *Table Editor* las columnas con llave foránea tienen una flecha que abre la fila relacionada.
 
@@ -117,7 +137,7 @@ No guardan datos propios ni incluyen contraseñas. Con PostgreSQL 15+ se crean c
 Todos los montos se guardan como número en pesos colombianos (COP) y se muestran con el formato `$380.000` mediante el filtro `|pesos` (definido en `app.py`).
 
 ## Pruebas
-`python -m unittest discover -s tests -v` (58 pruebas, incluidas simulación, pesos, base de datos y vistas: primer acceso, login, roles, portal del cliente, consulta pública y migración de bases antiguas). Para probar contra PostgreSQL: `TEST_DATABASE_URL=postgresql://usuario@host/base python -m unittest discover -s tests` (¡esa base se borra en cada prueba: usa una de pruebas!).
+`python -m unittest discover -s tests -v` (76 pruebas, incluidas simulación, pesos, base de datos y vistas: primer acceso, login, roles, portal del cliente con solicitudes, pacientes, historial y perfil, consulta pública y migración de bases antiguas). Para probar contra PostgreSQL: `TEST_DATABASE_URL=postgresql://usuario@host/base python -m unittest discover -s tests` (¡esa base se borra en cada prueba: usa una de pruebas!).
 
 ## Ideas para ampliar
 Gráficos (Chart.js), exportar a Excel, notificaciones por WhatsApp/correo, modelos predictivos más avanzados.

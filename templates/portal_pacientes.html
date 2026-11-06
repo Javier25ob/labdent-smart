@@ -1,0 +1,34 @@
+{% extends "portal_base.html" %}
+{% block titulo_pagina %}Mis pacientes{% endblock %}
+{% block hero %}
+  <h1>Mis pacientes</h1>
+  <p>{{ pacientes|length }} registrado(s). Solo tú y el laboratorio los ven.</p>
+{% endblock %}
+{% block contenido %}
+<form method="post" class="card mb-3"><div class="card-body d-flex gap-2 flex-wrap">
+  <input name="nombre" class="form-control" style="flex:1 1 220px;width:auto" placeholder="Nombre completo del paciente nuevo" maxlength="120" required>
+  <button class="btn btn-primary"><i class="bi bi-person-plus"></i> Agregar</button>
+</div></form>
+
+<div class="card"><div class="card-body py-2">
+  {% for p in pacientes %}
+  <div class="item-row">
+    <div class="grow">
+      <form method="post" action="/portal/pacientes/{{ p.id }}/editar" class="d-flex gap-2 align-items-center">
+        <input name="nombre" value="{{ p.nombre }}" class="form-control form-control-sm" maxlength="120" required aria-label="Nombre de {{ p.nombre }}">
+        <button class="btn btn-sm btn-outline-dark py-1" title="Guardar nombre"><i class="bi bi-check-lg"></i> Guardar</button>
+      </form>
+      <small class="text-muted">{{ p.n_ordenes }} orden(es){% if p.n_solicitudes %} · {{ p.n_solicitudes }} solicitud(es){% endif %}</small>
+    </div>
+    <a class="btn btn-sm btn-outline-primary py-1" href="/portal/solicitar?paciente={{ p.id }}"><i class="bi bi-plus-lg"></i> Solicitar</a>
+    {% if not p.n_ordenes and not p.n_solicitudes %}
+    <form method="post" action="/portal/pacientes/{{ p.id }}/eliminar" onsubmit="return confirm('¿Eliminar este paciente?')">
+      <button class="btn-del" title="Eliminar"><i class="bi bi-trash"></i></button>
+    </form>
+    {% endif %}
+  </div>
+  {% else %}
+  <div class="vacio"><i class="bi bi-people ico-big"></i><h5>Sin pacientes todavía</h5><p>Agrégalos arriba o directamente al solicitar un trabajo.</p></div>
+  {% endfor %}
+</div></div>
+{% endblock %}

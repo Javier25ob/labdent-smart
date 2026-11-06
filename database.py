@@ -31,7 +31,7 @@ DATABASE_URL = config.DATABASE_URL                            # "" = SQLite (las
 
 # Tablas en orden de dependencia (primero las "padre"). Se usa para vaciar, copiar y respaldar.
 TABLAS = ("usuarios", "odontologos", "pacientes", "servicios", "materiales", "servicio_materiales",
-          "ordenes", "historial_estados", "movimientos_inventario", "configuracion")
+          "ordenes", "solicitudes", "historial_estados", "movimientos_inventario", "configuracion")
 
 # Vistas de LECTURA: muestran los nombres en lugar de los números (ids) para que, al abrir la base
 # (por ejemplo en el Table Editor de Supabase), se vea ordenada y legible. No guardan datos propios:
@@ -64,6 +64,15 @@ VISTAS = {
         JOIN servicios s ON s.id = sm.servicio_id
         JOIN materiales m ON m.id = sm.material_id
         ORDER BY s.nombre, m.nombre""",
+    "v_solicitudes": """
+        SELECT sl.id AS solicitud, sl.estado, od.nombre AS odontologo, od.clinica, p.nombre AS paciente,
+               s.nombre AS servicio, sl.observaciones, sl.fecha_solicitud, sl.fecha_respuesta,
+               sl.motivo, sl.orden_id AS orden
+        FROM solicitudes sl
+        JOIN odontologos od ON od.id = sl.odontologo_id
+        JOIN pacientes p ON p.id = sl.paciente_id
+        JOIN servicios s ON s.id = sl.servicio_id
+        ORDER BY sl.id""",
     "v_historial_estados": """
         SELECT h.id, h.orden_id AS orden, p.nombre AS paciente, s.nombre AS servicio, h.estado, h.fecha
         FROM historial_estados h
@@ -295,6 +304,22 @@ def init_db():
 
 AJUSTES_SQL = "CREATE TABLE IF NOT EXISTS configuracion (clave TEXT PRIMARY KEY, valor TEXT NOT NULL DEFAULT '')"
 
+# Bases SQLite creadas antes del portal ampliado no tienen esta tabla: se crea sola al arrancar.
+# (En PostgreSQL la crea schema_postgres.sql, que también es "si no existe".)
+SOLICITUDES_SQLITE = """
+CREATE TABLE IF NOT EXISTS solicitudes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    odontologo_id INTEGER NOT NULL REFERENCES odontologos(id),
+    paciente_id INTEGER NOT NULL REFERENCES pacientes(id),
+    servicio_id INTEGER NOT NULL REFERENCES servicios(id),
+    observaciones TEXT,
+    fecha_solicitud TEXT NOT NULL,
+    estado TEXT NOT NULL DEFAULT 'Pendiente',
+    motivo TEXT,
+    fecha_respuesta TEXT,
+    orden_id INTEGER REFERENCES ordenes(id)
+)"""
+
 
 def migrar_login(conn):
     """Bases de datos creadas antes del login no tienen las columnas de acceso:
@@ -315,6 +340,8 @@ def asegurar_ajustes():
     conn = conectar()
     try:
         conn.execute(AJUSTES_SQL)
+        if not conn.postgres:
+            conn.execute(SOLICITUDES_SQLITE)
         migrar_login(conn)
         conn.commit()
         crear_vistas(conn)
@@ -346,7 +373,7 @@ def borrar_todos_los_datos():
     """Deja el sistema vacío de trabajo (materiales, servicios, odontólogos, pacientes y
     órdenes). Conserva los ajustes y las cuentas del equipo, para no quedarte sin poder entrar."""
     db = get_db()
-    tablas = ("movimientos_inventario", "historial_estados", "ordenes", "servicio_materiales",
+    tablas = ("movimientos_inventario", "historial_estados", "solicitudes", "ordenes", "servicio_materiales",
               "pacientes", "odontologos", "servicios", "materiales")
     if db.postgres:
         # TRUNCATE + RESTART IDENTITY: vacía y reinicia los contadores de id (como sqlite_sequence)

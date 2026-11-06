@@ -1,0 +1,36 @@
+{% extends "portal_base.html" %}
+{% block titulo_pagina %}Mi perfil{% endblock %}
+{% block hero %}
+  <h1>Mi perfil</h1>
+  <p>Usuario de acceso: <strong class="text-white">{{ yo.usuario }}</strong></p>
+{% endblock %}
+{% block contenido %}
+<div class="row g-3">
+  <div class="col-md-6">
+    <form method="post" class="card h-100"><div class="card-header">Mis datos</div><div class="card-body">
+      <input type="hidden" name="accion" value="datos">
+      <label class="form-label">Nombre</label>
+      <input name="nombre" class="form-control mb-3" value="{{ yo.nombre }}" maxlength="120" required>
+      <label class="form-label">Clínica o consultorio</label>
+      <input name="clinica" class="form-control mb-3" value="{{ yo.clinica or '' }}" maxlength="120">
+      <label class="form-label">Teléfono / WhatsApp</label>
+      <input name="telefono" class="form-control mb-3" value="{{ yo.telefono or '' }}" maxlength="30" inputmode="tel">
+      <div class="form-text mb-3">El laboratorio usa estos datos para contactarte sobre tus órdenes.</div>
+      <button class="btn btn-primary w-100"><i class="bi bi-check-lg"></i> Guardar datos</button>
+    </div></form>
+  </div>
+  <div class="col-md-6">
+    <form method="post" class="card h-100"><div class="card-header">Cambiar contraseña</div><div class="card-body">
+      <input type="hidden" name="accion" value="clave">
+      <label class="form-label">Contraseña actual</label>
+      <input name="actual" type="password" class="form-control mb-3" autocomplete="current-password" required>
+      <label class="form-label">Contraseña nueva</label>
+      <input name="nueva" type="password" class="form-control mb-1" autocomplete="new-password" minlength="{{ min_clave }}" required>
+      <div class="form-text mb-3">Mínimo {{ min_clave }} caracteres.</div>
+      <label class="form-label">Repite la contraseña nueva</label>
+      <input name="nueva2" type="password" class="form-control mb-3" autocomplete="new-password" minlength="{{ min_clave }}" required>
+      <button class="btn btn-outline-dark w-100"><i class="bi bi-key"></i> Cambiar contraseña</button>
+    </div></form>
+  </div>
+</div>
+{% endblock %}

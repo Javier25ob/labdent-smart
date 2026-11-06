@@ -17,6 +17,15 @@
 </div>
 {% endif %}
 
+{% if n_solicitudes %}
+<a class="alert d-flex align-items-center gap-2 text-decoration-none mb-3" href="/solicitudes/"
+   style="background:#efeafe;color:#4b2fb3;border:0;border-radius:14px">
+  <i class="bi bi-inbox fs-5"></i>
+  <span><strong>{{ n_solicitudes }} solicitud(es) nueva(s)</strong> de odontólogos esperan tu respuesta.</span>
+  <span class="ms-auto fw-semibold">Revisar <i class="bi bi-chevron-right"></i></span>
+</a>
+{% endif %}
+
 <div class="row g-3 mb-3">
   <div class="col-lg-4">
     <div class="pulso">

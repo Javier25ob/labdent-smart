@@ -1,6 +1,7 @@
 -- SECCIÓN 1 - BASE DE DATOS (SQLite)
 -- Cada tabla corresponde a un módulo del sistema.
 
+DROP TABLE IF EXISTS solicitudes;
 DROP TABLE IF EXISTS movimientos_inventario;
 DROP TABLE IF EXISTS historial_estados;
 DROP TABLE IF EXISTS ordenes;
@@ -69,6 +70,21 @@ CREATE TABLE ordenes (
     fecha_entrega_real TEXT,
     observaciones TEXT,
     consumo_registrado INTEGER NOT NULL DEFAULT 0
+);
+
+-- Solicitudes de trabajo que el odontólogo envía desde su portal.
+-- Quedan 'Pendiente' hasta que el laboratorio las acepta (se crea la orden) o las rechaza.
+CREATE TABLE solicitudes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    odontologo_id INTEGER NOT NULL REFERENCES odontologos(id),
+    paciente_id INTEGER NOT NULL REFERENCES pacientes(id),
+    servicio_id INTEGER NOT NULL REFERENCES servicios(id),
+    observaciones TEXT,
+    fecha_solicitud TEXT NOT NULL,
+    estado TEXT NOT NULL DEFAULT 'Pendiente',   -- Pendiente, Aceptada, Rechazada, Cancelada
+    motivo TEXT,                                -- por qué se rechazó (lo ve el odontólogo)
+    fecha_respuesta TEXT,
+    orden_id INTEGER REFERENCES ordenes(id)     -- la orden creada al aceptarla
 );
 
 CREATE TABLE historial_estados (

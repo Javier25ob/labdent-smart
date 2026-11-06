@@ -1,0 +1,67 @@
+{% extends "portal_base.html" %}
+{% block titulo_pagina %}Orden {{ codigo }}{% endblock %}
+{% block hero %}
+  <a href="/portal/" class="small text-decoration-none" style="color:#9fb8d1"><i class="bi bi-arrow-left"></i> Mis órdenes</a>
+  <div class="mt-2"><span class="codigo">{{ codigo }}</span></div>
+  <h1>{{ o.servicio }}</h1>
+  <p>Paciente: {{ o.paciente }}</p>
+{% endblock %}
+{% block contenido %}
+<div class="card mb-3"><div class="card-body">
+  <div class="steps">
+    <div class="fill-line" style="width:{{ actual * 28 }}%"></div>
+    {% for e in estados %}
+      <div class="step {{ 'done' if loop.index0 < actual else ('now' if loop.index0 == actual else '') }}">
+        <div class="dot"><i class="bi {{ 'bi-check-lg' if loop.index0 < actual else ['bi-inbox','bi-gear','bi-box-seam','bi-truck'][loop.index0] }}"></i></div>
+        {{ e }}<small>{{ fechas[e][5:10]|replace('-', '/') if e in fechas else '' }}</small>
+      </div>
+    {% endfor %}
+  </div>
+  <div class="eta">
+    {% if o.estado == 'Entregada' %}
+      <b><i class="bi bi-check2-circle"></i> Trabajo entregado</b>
+      <span class="text-muted">{{ o.fecha_entrega_real|fecha_larga }}
+        {% if o.fecha_entrega_real <= o.fecha_entrega_estimada %}· a tiempo{% endif %}</span>
+    {% else %}
+      <span class="text-muted small">Entrega estimada</span>
+      <b>{{ o.fecha_entrega_estimada|fecha_larga }}</b>
+      <span class="small {{ 'text-danger' if dias < 0 else 'text-muted' }}">
+        {% if dias < 0 %}Con {{ -dias }} día(s) de retraso — el laboratorio lo está priorizando{% elif dias == 0 %}¡Es hoy!{% else %}Faltan {{ dias }} día(s){% endif %}
+      </span>
+    {% endif %}
+  </div>
+</div></div>
+
+<div class="row g-3">
+  <div class="col-md-6">
+    <div class="card h-100"><div class="card-header">Datos del trabajo</div><div class="card-body">
+      <div class="dato"><span>Estado actual</span><strong>{{ o.estado }}</strong></div>
+      <div class="dato"><span>Servicio</span><strong>{{ o.servicio }}</strong></div>
+      <div class="dato"><span>Paciente</span><strong>{{ o.paciente }}</strong></div>
+      <div class="dato"><span>Recibido</span><strong>{{ o.fecha_ingreso[:10]|fecha_larga }}</strong></div>
+      <div class="dato"><span>Observaciones</span><strong class="text-end">{{ o.observaciones or '—' }}</strong></div>
+    </div></div>
+  </div>
+  <div class="col-md-6">
+    <div class="card h-100"><div class="card-header">Línea de tiempo</div><div class="card-body">
+      <ul class="tl">
+        {% if solicitud %}<li class="gris"><span class="p"></span><strong>Solicitado desde el portal</strong><small>{{ solicitud.fecha_solicitud[:16] }}</small></li>{% endif %}
+        {% for h in historial %}
+          <li><span class="p"></span><strong>{{ h.estado }}</strong><small>{{ h.fecha[:16] }}</small></li>
+        {% endfor %}
+        {% if o.estado != 'Entregada' %}
+          <li class="gris"><span class="p"></span><strong>Entrega estimada</strong><small>{{ o.fecha_entrega_estimada|fecha_larga }}</small></li>
+        {% endif %}
+      </ul>
+    </div></div>
+  </div>
+</div>
+
+<div class="d-flex gap-2 flex-wrap mt-3">
+  <a class="btn btn-outline-dark" href="/seguimiento/{{ codigo }}" target="_blank" rel="noopener"><i class="bi bi-qr-code"></i> Enlace público de seguimiento</a>
+  {% if lab_whatsapp %}
+  <a class="btn btn-success" target="_blank" rel="noopener"
+     href="https://wa.me/{{ lab_whatsapp }}?text={{ ('Hola, consulto por la orden ' ~ codigo)|urlencode }}"><i class="bi bi-whatsapp"></i> Preguntar por esta orden</a>
+  {% endif %}
+</div>
+{% endblock %}

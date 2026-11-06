@@ -1,0 +1,46 @@
+{% extends "portal_base.html" %}
+{% block titulo_pagina %}Historial{% endblock %}
+{% block hero %}
+  <h1>Historial</h1>
+  <p>{{ entregadas|length }} trabajo(s) entregado(s){% if entregadas %}, {{ a_tiempo }} a tiempo{% endif %}.</p>
+{% endblock %}
+{% block contenido %}
+<div class="sec-t">Trabajos entregados</div>
+<div class="card mb-3"><div class="card-body py-2">
+  {% for o in entregadas %}
+  <a class="item-row text-decoration-none" style="color:inherit" href="/portal/orden/{{ o.id }}">
+    <div class="grow"><strong>{{ o.servicio }}</strong><div class="small text-muted">{{ o.paciente }} · <span class="codigo">{{ o.codigo }}</span></div></div>
+    <div class="text-end small">
+      Entregada el {{ o.fecha_entrega_real|fecha_larga }}<br>
+      {% if o.fecha_entrega_real <= o.fecha_entrega_estimada %}<span class="riesgo riesgo-bajo">A tiempo</span>
+      {% else %}<span class="riesgo riesgo-medio">Con retraso</span>{% endif %}
+    </div>
+  </a>
+  {% else %}
+  <div class="vacio py-4"><i class="bi bi-box-seam ico-big"></i><p class="mb-0">Cuando el laboratorio te entregue un trabajo aparecerá aquí.</p></div>
+  {% endfor %}
+</div></div>
+
+<div class="sec-t">Mis solicitudes</div>
+<div class="card"><div class="card-body py-2">
+  {% for s in solicitudes %}
+  <div class="item-row">
+    <div class="grow">
+      <strong>{{ s.servicio }}</strong> <span class="text-muted small">#{{ s.id }}</span>
+      <div class="small text-muted">{{ s.paciente }} · enviada el {{ s.fecha_solicitud|fecha_larga }}</div>
+      {% if s.estado == 'Rechazada' and s.motivo %}<div class="small mt-1 text-danger"><i class="bi bi-chat-left-text"></i> Motivo: {{ s.motivo }}</div>{% endif %}
+    </div>
+    <div class="text-end">
+      <span class="badge estado-{{ s.estado }}">{{ s.estado }}</span>
+      {% if s.estado == 'Aceptada' and s.orden_id %}<div class="mt-1"><a class="small" href="/portal/orden/{{ s.orden_id }}">Ver orden <i class="bi bi-chevron-right"></i></a></div>
+      {% elif s.estado == 'Pendiente' %}
+      <form method="post" action="/portal/solicitudes/{{ s.id }}/cancelar" class="mt-1" onsubmit="return confirm('¿Cancelar esta solicitud?')">
+        <input type="hidden" name="volver" value="historial"><button class="btn btn-sm btn-outline-dark py-0">Cancelar</button>
+      </form>{% endif %}
+    </div>
+  </div>
+  {% else %}
+  <div class="vacio py-4"><i class="bi bi-send ico-big"></i><p class="mb-0">Aún no has enviado solicitudes. <a href="/portal/solicitar">Envía la primera</a>.</p></div>
+  {% endfor %}
+</div></div>
+{% endblock %}

@@ -1,0 +1,42 @@
+{% extends "portal_base.html" %}
+{% block titulo_pagina %}Solicitar trabajo{% endblock %}
+{% block hero %}
+  <h1>Solicitar un trabajo</h1>
+  <p>El laboratorio revisa tu solicitud y, al aceptarla, se convierte en una orden con seguimiento.</p>
+{% endblock %}
+{% block contenido %}
+{% if not servicios %}
+<div class="card"><div class="vacio"><i class="bi bi-tools ico-big"></i><h5>Aún no hay servicios disponibles</h5>
+  <p>El laboratorio todavía no ha publicado su lista de servicios. Escríbele para hacer tu pedido.</p></div></div>
+{% else %}
+<form method="post" class="card"><div class="card-body">
+  <label class="form-label fw-semibold">1. Paciente</label>
+  <select name="paciente_id" class="form-select mb-2" required id="paciente"
+          onchange="document.getElementById('nuevo').classList.toggle('d-none', this.value !== 'nuevo')">
+    <option value="" disabled {{ 'selected' if not f.paciente_id }}>Elige un paciente…</option>
+    {% for p in pacientes %}<option value="{{ p.id }}" {{ 'selected' if f.paciente_id|string == p.id|string }}>{{ p.nombre }}</option>{% endfor %}
+    <option value="nuevo" {{ 'selected' if f.paciente_id == 'nuevo' or (not pacientes and not f.paciente_id) }}>+ Paciente nuevo</option>
+  </select>
+  <div id="nuevo" class="mb-3 {{ '' if f.paciente_id == 'nuevo' or not pacientes else 'd-none' }}">
+    <input name="paciente_nuevo" class="form-control" placeholder="Nombre completo del paciente" maxlength="120" value="{{ f.paciente_nuevo or '' }}">
+    <div class="form-text">Queda guardado en «Mis pacientes» para próximas solicitudes.</div>
+  </div>
+
+  <label class="form-label fw-semibold mt-2">2. Servicio</label>
+  {% for s in servicios %}
+  <label class="svc-op">
+    <input type="radio" name="servicio_id" value="{{ s.id }}" required {{ 'checked' if f.servicio_id|string == s.id|string }}>
+    <span class="grow"><strong>{{ s.nombre }}</strong><br><small><i class="bi bi-clock"></i> Aprox. {{ s.dias_estimados }} día(s)</small></span>
+    <strong>{{ s.precio|pesos }}</strong>
+  </label>
+  {% endfor %}
+
+  <label class="form-label fw-semibold mt-3">3. Indicaciones para el laboratorio <span class="text-muted fw-normal">(opcional)</span></label>
+  <textarea name="observaciones" class="form-control mb-3" rows="3" maxlength="500"
+            placeholder="Ej.: color A2, pieza 21, enviar antes del viernes…">{{ f.observaciones or '' }}</textarea>
+
+  <div class="ayuda-box"><i class="bi bi-info-circle"></i> El precio y el tiempo son de referencia. La fecha de entrega real se calcula cuando el laboratorio acepta la solicitud.</div>
+  <button class="btn btn-primary w-100 py-2"><i class="bi bi-send"></i> Enviar solicitud</button>
+</div></form>
+{% endif %}
+{% endblock %}

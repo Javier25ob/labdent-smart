@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block titulo_pagina %}Solicitudes · LABDENT SMART{% endblock %}
+{% block titulo %}Solicitudes de odontólogos{% endblock %}
+{% block subtitulo %}Trabajos pedidos desde el portal del cliente. Al aceptarlos se crea la orden con su QR.{% endblock %}
+{% block contenido %}
+<div class="card mb-4"><div class="card-header d-flex justify-content-between align-items-center">
+  <span>Pendientes</span><span class="badge estado-Pendiente">{{ pendientes|length }}</span></div>
+  <div class="card-body py-2">
+  {% for s in pendientes %}
+    <div class="item-row flex-wrap">
+      <div class="grow">
+        <strong>{{ s.servicio }}</strong> <span class="text-muted small">#{{ s.id }} · {{ s.precio|pesos }} · {{ s.dias_estimados }} día(s)</span>
+        <div class="small">{{ s.odontologo }}{% if s.clinica %} ({{ s.clinica }}){% endif %} · Paciente: {{ s.paciente }}</div>
+        <div class="small text-muted">Enviada el {{ s.fecha_solicitud|fecha_larga }} a las {{ s.fecha_solicitud[11:16] }}</div>
+        {% if s.observaciones %}<div class="small mt-1"><i class="bi bi-chat-left-text"></i> {{ s.observaciones }}</div>{% endif %}
+        {% if s.faltan %}<div class="small mt-1"><span class="riesgo riesgo-alto"><i class="bi bi-exclamation-triangle"></i> Falta material: {{ s.faltan|join(', ') }}</span></div>{% endif %}
+      </div>
+      <div class="d-flex gap-2 flex-wrap align-items-start">
+        <form method="post" action="/solicitudes/{{ s.id }}/aceptar">
+          <button class="btn btn-success btn-sm"><i class="bi bi-check-lg"></i> Aceptar y crear orden</button>
+        </form>
+        <button class="btn btn-outline-dark btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#rech{{ s.id }}">
+          <i class="bi bi-x-lg"></i> Rechazar</button>
+      </div>
+      <form method="post" action="/solicitudes/{{ s.id }}/rechazar" class="collapse w-100 mt-2" id="rech{{ s.id }}">
+        <div class="d-flex gap-2">
+          <input name="motivo" class="form-control form-control-sm" maxlength="300" required
+                 placeholder="Motivo (el odontólogo lo verá): ej. falta la impresión, llamar para coordinar…">
+          <button class="btn btn-sm btn-dark">Confirmar rechazo</button>
+        </div>
+      </form>
+    </div>
+  {% else %}
+    <div class="vacio py-4"><i class="bi bi-inbox ico-big"></i><h5>No hay solicitudes pendientes</h5>
+      <p class="mb-0">Cuando un odontólogo pida un trabajo desde su portal, aparecerá aquí.</p></div>
+  {% endfor %}
+  </div>
+</div>
+
+{% if recientes %}
+<div class="card"><div class="card-header">Respondidas recientemente</div>
+  <div class="card-body py-2">
+  {% for s in recientes %}
+    <div class="item-row">
+      <div class="grow"><strong>{{ s.servicio }}</strong> <span class="text-muted small">#{{ s.id }}</span>
+        <div class="small text-muted">{{ s.odontologo }} · {{ s.paciente }}{% if s.motivo %} · Motivo: {{ s.motivo }}{% endif %}</div></div>
+      <span class="badge estado-{{ s.estado }}">{{ s.estado }}</span>
+      {% if s.orden_id %}<a class="small" href="/ordenes/{{ s.orden_id }}">Orden #{{ s.orden_id }}</a>{% endif %}
+    </div>
+  {% endfor %}
+  </div>
+</div>
+{% endif %}
+{% endblock %}
