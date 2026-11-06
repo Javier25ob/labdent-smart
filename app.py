@@ -9,6 +9,7 @@ from database import asegurar_ajustes, close_db, get_ajuste, get_db, hay_adminis
 from routes import ajustes, auth, catalogos, inventario, ordenes, panel, portal, seguimiento, solicitudes
 from services import acceso
 from services import seguimiento as seg_svc
+from services import pacientes as pac_svc
 from services import solicitudes as sol_svc
 
 # Páginas que se pueden abrir SIN iniciar sesión:
@@ -116,6 +117,7 @@ def create_app():
                 "lab_whatsapp": get_ajuste("lab_whatsapp", ""),
                 "usuario": usuario, "cliente": cliente,
                 "es_admin": acceso.es_admin(),
+                "tipos_documento": pac_svc.TIPOS_DOCUMENTO,
                 # contador del menú «Solicitudes» (solo lo ve el personal del laboratorio)
                 "n_solicitudes": sol_svc.contar_pendientes(get_db()) if usuario else 0}
     return app

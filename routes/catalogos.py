@@ -4,6 +4,7 @@ from flask import Blueprint, abort, flash, g, redirect, render_template, request
 import config
 from database import ErrorIntegridad, get_db, hay_administrador
 from services import acceso
+from services import pacientes as pac_svc
 
 bp = Blueprint("catalogos", __name__, url_prefix="/catalogos")
 TABLAS = {"usuario": "usuarios", "odontologo": "odontologos", "paciente": "pacientes", "servicio": "servicios"}
@@ -120,8 +121,12 @@ def editar(tipo, registro_id):
                        (f["nombre"].strip(), f.get("telefono", ""), f.get("clinica", ""),
                         usuario, clave_hash, registro_id))
         elif tipo == "paciente":
-            db.execute("UPDATE pacientes SET nombre = ?, odontologo_id = ? WHERE id = ?",
-                       (f["nombre"].strip(), int(f["odontologo_id"]), registro_id))
+            datos, error = pac_svc.leer(f)
+            error = error or pac_svc.actualizar(db, registro_id, int(f["odontologo_id"]), datos)
+            if error:
+                db.rollback()
+                flash(error, "danger")
+                return volver(tipo)
         elif tipo == "servicio":
             db.execute("UPDATE servicios SET nombre = ?, precio = ?, dias_estimados = ? WHERE id = ?",
                        (f["nombre"].strip(), float(f["precio"] or 0), int(f["dias"]), registro_id))
@@ -158,8 +163,13 @@ def agregar(tipo):
                        "VALUES (?, ?, ?, ?, ?)",
                        (f["nombre"].strip(), f.get("telefono", ""), f.get("clinica", ""), usuario, clave_hash))
         elif tipo == "paciente":
-            db.execute("INSERT INTO pacientes (nombre, odontologo_id) VALUES (?, ?)",
-                       (f["nombre"].strip(), int(f["odontologo_id"])))
+            datos, error = pac_svc.leer(f)
+            if not error:
+                _, error = pac_svc.crear(db, int(f["odontologo_id"]), datos)
+            if error:
+                db.rollback()
+                flash(error, "danger")
+                return volver(tipo)
         elif tipo == "servicio":
             db.execute("INSERT INTO servicios (nombre, precio, dias_estimados) VALUES (?, ?, ?)",
                        (f["nombre"].strip(), float(f["precio"] or 0), int(f["dias"])))

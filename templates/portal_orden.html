@@ -38,6 +38,7 @@
       <div class="dato"><span>Estado actual</span><strong>{{ o.estado }}</strong></div>
       <div class="dato"><span>Servicio</span><strong>{{ o.servicio }}</strong></div>
       <div class="dato"><span>Paciente</span><strong>{{ o.paciente }}</strong></div>
+      {% if o.paciente_documento %}<div class="dato"><span>Documento</span><strong>{{ o.paciente_tipo_doc or 'CC' }} {{ o.paciente_documento }}</strong></div>{% endif %}
       <div class="dato"><span>Recibido</span><strong>{{ o.fecha_ingreso[:10]|fecha_larga }}</strong></div>
       <div class="dato"><span>Observaciones</span><strong class="text-end">{{ o.observaciones or '—' }}</strong></div>
     </div></div>

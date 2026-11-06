@@ -32,7 +32,10 @@ CREATE TABLE odontologos (
 CREATE TABLE pacientes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nombre TEXT NOT NULL,
-    odontologo_id INTEGER REFERENCES odontologos(id)
+    odontologo_id INTEGER REFERENCES odontologos(id),
+    tipo_documento TEXT,         -- CC, TI, RC, CE, PA, PPT
+    documento TEXT,              -- número de identificación (sin puntos ni espacios)
+    telefono TEXT
 );
 
 CREATE TABLE servicios (

@@ -5,6 +5,7 @@ from config import ESTADOS
 from database import get_db
 from routes.seguimiento import url_orden
 from services import ordenes as svc
+from services import pacientes as pac_svc
 from services import seguimiento as seg
 
 bp = Blueprint("ordenes", __name__, url_prefix="/ordenes")
@@ -25,12 +26,13 @@ def nueva():
         f = request.form
         odontologo_id = int(f["odontologo_id"])
         if f["paciente_id"] == "nuevo":      # paciente nuevo escrito en el mismo formulario
-            nombre = f.get("paciente_nuevo", "").strip()
-            if not nombre:
-                flash("Escribe el nombre del paciente.", "danger")
+            datos, error = pac_svc.leer(f, prefijo="paciente_")
+            if not error:
+                paciente_id, error = pac_svc.crear(db, odontologo_id, datos)
+            if error:
+                db.rollback()
+                flash(error, "danger")
                 return redirect(url_for("ordenes.nueva"))
-            paciente_id = db.insertar("INSERT INTO pacientes (nombre, odontologo_id) VALUES (?, ?)",
-                                      (nombre, odontologo_id))
             db.commit()
         else:
             paciente_id = int(f["paciente_id"])
@@ -40,7 +42,9 @@ def nueva():
     return render_template(
         "orden_nueva.html",
         odontologos=db.execute("SELECT * FROM odontologos ORDER BY nombre").fetchall(),
-        pacientes=db.execute("SELECT * FROM pacientes ORDER BY nombre").fetchall(),
+        pacientes_js=[{"id": p["id"], "nombre": p["nombre"], "od": p["odontologo_id"],
+                       "doc": pac_svc.etiqueta_documento(p)}
+                      for p in db.execute("SELECT * FROM pacientes ORDER BY nombre")],
         servicios=db.execute("SELECT * FROM servicios ORDER BY nombre").fetchall())
 
 

@@ -25,6 +25,7 @@ Para que **todo el equipo comparta los mismos datos**, conecta la app a PostgreS
 | 6 | `routes/ordenes.py` | Pantallas de órdenes |
 | 7 | `routes/inventario.py` | Pantallas de inventario |
 | 8 | `routes/catalogos.py` | Usuarios, odontólogos, pacientes, servicios y "recetas" |
+| 8B | `services/pacientes.py`, `templates/_paciente_campos.html` | Datos del paciente (nombre, documento, teléfono) y sus validaciones, iguales en todo el sistema |
 | 9 | `app.py` | Arranque de la aplicación y control de acceso |
 | 12 | `services/simulacion_colas.py` | **Simulación de colas (SimPy)** del flujo de producción y teoría M/M/c |
 | 11 | `services/acceso.py`, `routes/auth.py`, `routes/portal.py` | Login del personal y del cliente, roles y límite de intentos |
@@ -51,6 +52,15 @@ Hay dos entradas separadas:
 
 **Roles del personal:** `Administrador`, `Técnico` y `Recepción`. Solo el Administrador entra a **Ajustes**, **Respaldo** y **Mi equipo** (los demás reciben 403).
 Las cuentas se crean en *Clientes y servicios*: en **Mi equipo** (personal) y en **Odontólogos** (acceso al portal, opcional). Si dejas el usuario vacío, esa persona queda sin acceso. Siempre debe quedar al menos un administrador con acceso.
+
+### Datos del paciente
+Cada paciente guarda **nombre**, **tipo y número de documento** (CC, TI, RC, CE, PA, PPT) y **teléfono**. Se piden con el mismo formulario en *Clientes y servicios → Pacientes*, en *Nueva orden* (paciente nuevo), y en el portal (*Mis pacientes* y *Solicitar trabajo*).
+- El nombre es obligatorio; documento y teléfono son opcionales.
+- El documento se guarda sin puntos ni espacios (`1.065.234.567` → `1065234567`). CC, TI y RC solo admiten números.
+- Un mismo odontólogo no puede tener dos pacientes con el mismo documento.
+- El teléfono debe tener entre 7 y 15 dígitos.
+- La consulta pública por QR **no** muestra documento ni teléfono (solo las iniciales).
+- En bases existentes las columnas se agregan solas al arrancar; los pacientes antiguos quedan sin documento hasta que los edites.
 
 ### Portal del odontólogo (cliente)
 Más completo que una simple consulta, pero sin acceso a lo interno del laboratorio:
@@ -125,7 +135,7 @@ Las tablas están **normalizadas**: una orden guarda `odontologo_id`, `paciente_
 | Vista | Muestra |
 |---|---|
 | `v_ordenes` | orden, estado, odontólogo, clínica, paciente, servicio, precio y fechas |
-| `v_pacientes` | paciente y su odontólogo/clínica |
+| `v_pacientes` | paciente, su odontólogo/clínica, documento y teléfono |
 | `v_movimientos_inventario` | fecha, entrada/salida, material, cantidad, unidad y orden |
 | `v_recetas` | qué materiales y cuánto consume cada servicio |
 | `v_historial_estados` | cambios de estado de cada orden, con paciente y servicio |
@@ -137,7 +147,7 @@ No guardan datos propios ni incluyen contraseñas. Con PostgreSQL 15+ se crean c
 Todos los montos se guardan como número en pesos colombianos (COP) y se muestran con el formato `$380.000` mediante el filtro `|pesos` (definido en `app.py`).
 
 ## Pruebas
-`python -m unittest discover -s tests -v` (76 pruebas, incluidas simulación, pesos, base de datos y vistas: primer acceso, login, roles, portal del cliente con solicitudes, pacientes, historial y perfil, consulta pública y migración de bases antiguas). Para probar contra PostgreSQL: `TEST_DATABASE_URL=postgresql://usuario@host/base python -m unittest discover -s tests` (¡esa base se borra en cada prueba: usa una de pruebas!).
+`python -m unittest discover -s tests -v` (91 pruebas, incluidas simulación, pesos, base de datos y vistas: primer acceso, login, roles, portal del cliente con solicitudes, pacientes, historial y perfil, datos y validación del paciente, consulta pública y migración de bases antiguas). Para probar contra PostgreSQL: `TEST_DATABASE_URL=postgresql://usuario@host/base python -m unittest discover -s tests` (¡esa base se borra en cada prueba: usa una de pruebas!).
 
 ## Ideas para ampliar
 Gráficos (Chart.js), exportar a Excel, notificaciones por WhatsApp/correo, modelos predictivos más avanzados.

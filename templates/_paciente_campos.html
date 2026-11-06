@@ -1,0 +1,32 @@
+{# Campos del paciente, iguales en todo el sistema. p = paciente a editar (o None); prefijo para
+   formularios donde el paciente se crea junto con otra cosa (ej. nueva orden, solicitud). #}
+{% macro campos(p=None, prefijo='', requerido=true, compacto=false) %}
+<div class="row g-2">
+  <div class="col-12">
+    {% if not compacto %}<label class="form-label small mb-1">Nombre completo</label>{% endif %}
+    <input name="{{ prefijo }}nombre" class="form-control" maxlength="120" placeholder="Nombre completo del paciente"
+           value="{{ p.nombre if p else '' }}" {{ 'required' if requerido }} data-campo-paciente>
+  </div>
+  <div class="col-5 col-sm-4">
+    {% if not compacto %}<label class="form-label small mb-1">Tipo</label>{% endif %}
+    <select name="{{ prefijo }}tipo_documento" class="form-select" aria-label="Tipo de documento">
+      {% for cod, nombre in tipos_documento.items() %}
+      <option value="{{ cod }}" title="{{ nombre }}" {{ 'selected' if p and p.tipo_documento == cod }}>{{ cod }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-7 col-sm-8">
+    {% if not compacto %}<label class="form-label small mb-1">N.º de identificación</label>{% endif %}
+    <input name="{{ prefijo }}documento" class="form-control" maxlength="25" inputmode="numeric"
+           placeholder="Ej. 1065234567" value="{{ p.documento if p and p.documento else '' }}">
+  </div>
+  <div class="col-12">
+    {% if not compacto %}<label class="form-label small mb-1">Teléfono</label>{% endif %}
+    <input name="{{ prefijo }}telefono" class="form-control" maxlength="30" inputmode="tel"
+           placeholder="Teléfono (ej. 300 123 4567)" value="{{ p.telefono if p and p.telefono else '' }}">
+  </div>
+</div>
+{% endmacro %}
+
+{# Línea corta con documento y teléfono para listas. #}
+{% macro resumen(p) %}{% if p.documento %}<span class="me-2"><i class="bi bi-person-vcard"></i> {{ p.tipo_documento or 'CC' }} {{ p.documento }}</span>{% endif %}{% if p.telefono %}<span><i class="bi bi-telephone"></i> {{ p.telefono }}</span>{% endif %}{% if not p.documento and not p.telefono %}<span class="text-warning-emphasis">Sin documento ni teléfono</span>{% endif %}{% endmacro %}

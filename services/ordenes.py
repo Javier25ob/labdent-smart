@@ -67,7 +67,8 @@ def avanzar_estado(db, orden_id):
 
 
 CONSULTA_ORDENES = """
-SELECT o.*, od.nombre AS odontologo, p.nombre AS paciente, s.nombre AS servicio
+SELECT o.*, od.nombre AS odontologo, p.nombre AS paciente, s.nombre AS servicio,
+       p.tipo_documento AS paciente_tipo_doc, p.documento AS paciente_documento, p.telefono AS paciente_telefono
 FROM ordenes o
 JOIN odontologos od ON od.id = o.odontologo_id
 JOIN pacientes p ON p.id = o.paciente_id

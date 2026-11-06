@@ -21,6 +21,8 @@
     <div class="card mb-3"><div class="card-body">
       <div class="dato"><span>Odontólogo</span><strong>{{ o.odontologo }}</strong></div>
       <div class="dato"><span>Paciente</span><strong>{{ o.paciente }}</strong></div>
+      {% if o.paciente_documento %}<div class="dato"><span>Documento</span><strong>{{ o.paciente_tipo_doc or 'CC' }} {{ o.paciente_documento }}</strong></div>{% endif %}
+      {% if o.paciente_telefono %}<div class="dato"><span>Teléfono del paciente</span><strong>{{ o.paciente_telefono }}</strong></div>{% endif %}
       <div class="dato"><span>Servicio</span><strong>{{ o.servicio }}</strong></div>
       <div class="dato"><span>Ingreso</span><strong>{{ o.fecha_ingreso }}</strong></div>
       <div class="dato"><span>Entrega estimada</span><strong>{{ o.fecha_entrega_estimada }}</strong></div>

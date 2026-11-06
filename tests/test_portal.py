@@ -56,12 +56,12 @@ class Solicitudes(BasePortal):
         self.assertEqual(self.fila("SELECT COUNT(*) FROM solicitudes")[0], 0)
 
     def test_servicio_invalido_no_deja_paciente_suelto(self):
-        r = self.solicitar(paciente_id="nuevo", paciente_nuevo="Carla Nueva", servicio_id="99")
+        r = self.solicitar(paciente_id="nuevo", paciente_nombre="Carla Nueva", servicio_id="99")
         self.assertIn("Elige un servicio", r.get_data(as_text=True))
         self.assertIsNone(self.fila("SELECT id FROM pacientes WHERE nombre = 'Carla Nueva'"))
 
     def test_paciente_nuevo_desde_la_solicitud(self):
-        self.solicitar(paciente_id="nuevo", paciente_nuevo="Carla Nueva")
+        self.solicitar(paciente_id="nuevo", paciente_nombre="Carla Nueva")
         p = self.fila("SELECT * FROM pacientes WHERE nombre = 'Carla Nueva'")
         self.assertEqual(p["odontologo_id"], 1)
         self.assertEqual(self.fila("SELECT paciente_id FROM solicitudes")[0], p["id"])

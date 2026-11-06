@@ -48,7 +48,8 @@ VISTAS = {
         JOIN servicios s ON s.id = o.servicio_id
         ORDER BY o.id""",
     "v_pacientes": """
-        SELECT p.id, p.nombre AS paciente, od.nombre AS odontologo, od.clinica
+        SELECT p.id, p.nombre AS paciente, od.nombre AS odontologo, od.clinica,
+               p.tipo_documento, p.documento, p.telefono
         FROM pacientes p
         LEFT JOIN odontologos od ON od.id = p.odontologo_id
         ORDER BY p.id""",
@@ -333,6 +334,16 @@ def migrar_login(conn):
         conn.execute(f"CREATE UNIQUE INDEX IF NOT EXISTS idx_{tabla}_usuario ON {tabla}(usuario)")
 
 
+def migrar_pacientes(conn):
+    """Bases creadas antes de pedir documento y teléfono del paciente: se agregan las columnas
+    (vacías para los pacientes que ya existían, que se completan editándolos)."""
+    cols = conn.columnas("pacientes")
+    for col in ("tipo_documento", "documento", "telefono"):
+        if col not in cols:
+            conn.execute(f"ALTER TABLE pacientes ADD COLUMN {col} TEXT")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_pacientes_documento ON pacientes(documento)")
+
+
 def asegurar_ajustes():
     """Deja la base lista al arrancar: tablas (PostgreSQL), tabla de ajustes y columnas de login
     (no toca tus datos)."""
@@ -343,6 +354,7 @@ def asegurar_ajustes():
         if not conn.postgres:
             conn.execute(SOLICITUDES_SQLITE)
         migrar_login(conn)
+        migrar_pacientes(conn)
         conn.commit()
         crear_vistas(conn)
     finally:

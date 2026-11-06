@@ -31,8 +31,12 @@ def cargar():
         cuentas.append(("Portal cliente", cl, u, clave))
         q("INSERT INTO odontologos (nombre, telefono, clinica, usuario, clave_hash) VALUES (?, ?, ?, ?, ?)",
           (n, t, cl, u, generate_password_hash(clave)))
-    for i, n in enumerate(["Juan Torres", "María López", "Pedro Díaz", "Sofía Rojas", "Camilo Silva", "Lucía Mora"]):
-        q("INSERT INTO pacientes (nombre, odontologo_id) VALUES (?, ?)", (n, i % 3 + 1))
+    pacientes = [("Juan Torres", "CC", "1065234567", "3011234567"), ("María López", "CC", "1065987654", "3029876543"),
+                 ("Pedro Díaz", "TI", "1067123456", ""), ("Sofía Rojas", "CC", "49765432", "3154567890"),
+                 ("Camilo Silva", "CE", "E2345678", "3168889900"), ("Lucía Mora", "CC", "1065555123", "")]
+    for i, (n, tipo, doc, tel) in enumerate(pacientes):
+        q("INSERT INTO pacientes (nombre, odontologo_id, tipo_documento, documento, telefono) VALUES (?, ?, ?, ?, ?)",
+          (n, i % 3 + 1, tipo, doc, tel or None))
     servicios = [("Corona de zirconio", 380000, 6), ("Prótesis acrílica", 450000, 8),
                  ("Carilla de porcelana", 320000, 7), ("Guarda oclusal", 120000, 3)]
     for s in servicios:

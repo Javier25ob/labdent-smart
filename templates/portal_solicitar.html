@@ -1,4 +1,5 @@
 {% extends "portal_base.html" %}
+{% import "_paciente_campos.html" as pac with context %}
 {% block titulo_pagina %}Solicitar trabajo{% endblock %}
 {% block hero %}
   <h1>Solicitar un trabajo</h1>
@@ -14,12 +15,15 @@
   <select name="paciente_id" class="form-select mb-2" required id="paciente"
           onchange="document.getElementById('nuevo').classList.toggle('d-none', this.value !== 'nuevo')">
     <option value="" disabled {{ 'selected' if not f.paciente_id }}>Elige un paciente…</option>
-    {% for p in pacientes %}<option value="{{ p.id }}" {{ 'selected' if f.paciente_id|string == p.id|string }}>{{ p.nombre }}</option>{% endfor %}
+    {% for p in pacientes %}<option value="{{ p.id }}" {{ 'selected' if f.paciente_id|string == p.id|string }}>{{ p.nombre }}{% if p.documento %} · {{ p.tipo_documento or 'CC' }} {{ p.documento }}{% endif %}</option>{% endfor %}
     <option value="nuevo" {{ 'selected' if f.paciente_id == 'nuevo' or (not pacientes and not f.paciente_id) }}>+ Paciente nuevo</option>
   </select>
   <div id="nuevo" class="mb-3 {{ '' if f.paciente_id == 'nuevo' or not pacientes else 'd-none' }}">
-    <input name="paciente_nuevo" class="form-control" placeholder="Nombre completo del paciente" maxlength="120" value="{{ f.paciente_nuevo or '' }}">
-    <div class="form-text">Queda guardado en «Mis pacientes» para próximas solicitudes.</div>
+    <div class="acceso-box">
+      {{ pac.campos({'nombre': f.paciente_nombre, 'tipo_documento': f.paciente_tipo_documento, 'documento': f.paciente_documento,
+                     'telefono': f.paciente_telefono} if f.paciente_nombre else None, prefijo='paciente_', requerido=false) }}
+      <div class="form-text">Queda guardado en «Mis pacientes» para próximas solicitudes.</div>
+    </div>
   </div>
 
   <label class="form-label fw-semibold mt-2">2. Servicio</label>

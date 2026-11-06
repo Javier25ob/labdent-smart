@@ -15,6 +15,7 @@ from config import ESTADOS
 from database import ErrorIntegridad, get_db
 from services import acceso
 from services import ordenes as ord_svc
+from services import pacientes as pac_svc
 from services import seguimiento as seg
 from services import solicitudes as sol
 
@@ -62,7 +63,7 @@ def _mis_ordenes(db):
 
 def _mis_pacientes(db):
     return db.execute(
-        "SELECT p.id, p.nombre, "
+        "SELECT p.id, p.nombre, p.tipo_documento, p.documento, p.telefono, "
         "(SELECT COUNT(*) FROM ordenes o WHERE o.paciente_id = p.id) AS n_ordenes, "
         "(SELECT COUNT(*) FROM solicitudes s WHERE s.paciente_id = p.id) AS n_solicitudes "
         "FROM pacientes p WHERE p.odontologo_id = ? ORDER BY p.nombre", (g.cliente["id"],)).fetchall()
@@ -135,13 +136,14 @@ def solicitar():
             servicio_id = None
         paciente_id = None
         if f.get("paciente_id") == "nuevo":
-            nombre = f.get("paciente_nuevo", "").strip()
-            if not nombre:
-                flash("Escribe el nombre del paciente nuevo.", "danger")
+            datos, error = pac_svc.leer(f, prefijo="paciente_")
+            if not error:
+                paciente_id, error = pac_svc.crear(db, g.cliente["id"], datos)
+            if error:
+                db.rollback()
+                flash(error, "danger")
                 return _vista("portal_solicitar.html", "solicitar", servicios=servicios,
                               pacientes=_mis_pacientes(db), f=f)
-            paciente_id = db.insertar("INSERT INTO pacientes (nombre, odontologo_id) VALUES (?, ?)",
-                                      (nombre[:120], g.cliente["id"]))
         else:
             try:
                 paciente_id = int(f.get("paciente_id", ""))
@@ -174,15 +176,18 @@ def cancelar_solicitud(solicitud_id):
 def pacientes():
     db = get_db()
     if request.method == "POST":
-        nombre = request.form.get("nombre", "").strip()
-        if not nombre:
-            flash("Escribe el nombre del paciente.", "danger")
-        else:
-            db.insertar("INSERT INTO pacientes (nombre, odontologo_id) VALUES (?, ?)", (nombre[:120], g.cliente["id"]))
-            db.commit()
-            flash(f"Paciente «{nombre}» registrado.", "success")
+        datos, error = pac_svc.leer(request.form)
+        if not error:
+            _, error = pac_svc.crear(db, g.cliente["id"], datos)
+        if error:
+            db.rollback()
+            flash(error, "danger")
+            # se vuelve a mostrar lo que escribió, para no hacerlo empezar de cero
+            return _vista("portal_pacientes.html", "pacientes", pacientes=_mis_pacientes(db), nuevo=request.form)
+        db.commit()
+        flash(f"Paciente «{datos['nombre']}» registrado.", "success")
         return redirect(url_for("portal.pacientes"))
-    return _vista("portal_pacientes.html", "pacientes", pacientes=_mis_pacientes(db))
+    return _vista("portal_pacientes.html", "pacientes", pacientes=_mis_pacientes(db), nuevo=None)
 
 
 @bp.route("/pacientes/<int:paciente_id>/editar", methods=["POST"])
@@ -190,12 +195,12 @@ def editar_paciente(paciente_id):
     db = get_db()
     if _mi_paciente(db, paciente_id) is None:
         abort(404)
-    nombre = request.form.get("nombre", "").strip()
-    if not nombre:
-        flash("El nombre no puede quedar vacío.", "danger")
+    datos, error = pac_svc.leer(request.form)
+    error = error or pac_svc.actualizar(db, paciente_id, g.cliente["id"], datos)   # sigue siendo SUYO
+    if error:
+        db.rollback()
+        flash(error, "danger")
     else:
-        db.execute("UPDATE pacientes SET nombre = ? WHERE id = ? AND odontologo_id = ?",
-                   (nombre[:120], paciente_id, g.cliente["id"]))
         db.commit()
         flash("Paciente actualizado.", "success")
     return redirect(url_for("portal.pacientes"))

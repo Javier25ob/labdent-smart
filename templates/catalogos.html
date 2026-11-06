@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% import "_paciente_campos.html" as pac with context %}
 {% block titulo %}Clientes y servicios{% endblock %}
 {% block subtitulo %}Aquí registras con quién trabajas y qué ofreces{% endblock %}
 {% macro borrar(tipo, id) %}<form method="post" action="/catalogos/{{ tipo }}/{{ id }}/eliminar" onsubmit="return confirm('¿Eliminar este registro?')"><button class="btn-del" title="Eliminar"><i class="bi bi-trash3"></i></button></form>{% endmacro %}
@@ -96,18 +97,23 @@
 <div class="row g-3"><div class="col-lg-4"><div class="card card-body"><h5>Nuevo paciente</h5>
   {% if odontologos %}
   <form method="post" action="/catalogos/paciente" class="d-grid gap-2">
-    <input name="nombre" class="form-control" placeholder="Nombre del paciente" required>
+    {{ pac.campos() }}
+    <label class="form-label small mb-0">Odontólogo que lo atiende</label>
     <select name="odontologo_id" class="form-select">{% for o in odontologos %}<option value="{{ o.id }}">{{ o.nombre }}</option>{% endfor %}</select>
     <button class="btn btn-primary">Guardar paciente</button></form>
   {% else %}<p class="text-muted small mb-2">Primero registra un odontólogo.</p><a class="btn btn-outline-primary btn-sm" href="?tab=odontologos">Ir a odontólogos</a>{% endif %}</div></div>
   <div class="col-lg-8"><div class="card card-body py-2">
-    {% for p in pacientes %}<div class="item-row"><div class="grow"><strong>{{ p.nombre }}</strong><div class="small text-muted">Paciente de {{ p.odontologo }}</div></div>
+    {% if pacientes|length > 5 %}<input type="search" class="form-control form-control-sm my-2" placeholder="Buscar por nombre, documento o teléfono…"
+      oninput="const t=this.value.toLowerCase();document.querySelectorAll('[data-pac]').forEach(e=>e.style.display=e.dataset.pac.includes(t)?'':'none')">{% endif %}
+    {% for p in pacientes %}<div class="item-row" data-pac="{{ (p.nombre ~ ' ' ~ (p.documento or '') ~ ' ' ~ (p.telefono or '') ~ ' ' ~ (p.odontologo or ''))|lower }}"><div class="grow"><strong>{{ p.nombre }}</strong>
+      <div class="small text-muted">{{ pac.resumen(p) }}</div><div class="small text-muted">Paciente de {{ p.odontologo }}</div></div>
       <div class="d-flex gap-2">{{ editar_btn('paciente', p.id) }}{{ borrar('paciente', p.id) }}</div></div>
     <div class="modal fade" id="edit-paciente-{{ p.id }}" tabindex="-1"><div class="modal-dialog"><div class="modal-content">
       <form method="post" action="/catalogos/paciente/{{ p.id }}/editar">
         <div class="modal-header"><h5 class="modal-title">Editar paciente</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
         <div class="modal-body d-grid gap-2">
-          <input name="nombre" class="form-control" value="{{ p.nombre }}" required>
+          {{ pac.campos(p) }}
+          <label class="form-label small mb-0">Odontólogo que lo atiende</label>
           <select name="odontologo_id" class="form-select">{% for o in odontologos %}<option value="{{ o.id }}" {{ 'selected' if o.id == p.odontologo_id }}>{{ o.nombre }}</option>{% endfor %}</select>
         </div>
         <div class="modal-footer"><button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button><button class="btn btn-primary">Guardar cambios</button></div>
